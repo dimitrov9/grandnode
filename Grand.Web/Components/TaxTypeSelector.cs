@@ -1,6 +1,6 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Grand.Web.Services;
-using Grand.Framework.Components;
+﻿using Grand.Framework.Components;
+using Grand.Web.Interfaces;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Grand.Web.ViewComponents
 {
@@ -10,7 +10,7 @@ namespace Grand.Web.ViewComponents
 
         public TaxTypeSelectorViewComponent(ICommonViewModelService commonViewModelService)
         {
-            this._commonViewModelService = commonViewModelService;
+            _commonViewModelService = commonViewModelService;
         }
 
         public IViewComponentResult Invoke()

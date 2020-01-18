@@ -1,6 +1,6 @@
-﻿using System.Collections.Generic;
-using Grand.Framework.Mvc.Models;
+﻿using Grand.Framework.Mvc.Models;
 using Grand.Web.Models.Media;
+using System.Collections.Generic;
 
 namespace Grand.Web.Models.Blogs
 {
@@ -16,5 +16,6 @@ namespace Grand.Web.Models.Blogs
         public string WorkingLanguageId { get; set; }
         public BlogPagingFilteringModel PagingFilteringContext { get; set; }
         public IList<BlogPostModel> BlogPosts { get; set; }
+        public string SearchKeyword { get; set; }
     }
 }

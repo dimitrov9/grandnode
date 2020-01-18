@@ -1,7 +1,8 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Grand.Web.Services;
+﻿using Grand.Framework.Components;
+using Grand.Web.Interfaces;
+using Microsoft.AspNetCore.Mvc;
 using System.Linq;
-using Grand.Framework.Components;
+using System.Threading.Tasks;
 
 namespace Grand.Web.ViewComponents
 {
@@ -11,13 +12,12 @@ namespace Grand.Web.ViewComponents
 
         public WidgetViewComponent(IWidgetViewModelService widgetViewModelService)
         {
-            this._widgetViewModelService = widgetViewModelService;
+            _widgetViewModelService = widgetViewModelService;
         }
 
-        public IViewComponentResult Invoke(string widgetZone, object additionalData = null)
+        public async Task<IViewComponentResult> InvokeAsync(string widgetZone, object additionalData = null)
         {
-            var model = _widgetViewModelService.PrepareRenderWidget(widgetZone, additionalData);
-
+            var model = await _widgetViewModelService.PrepareRenderWidget(widgetZone, additionalData);
             if (!model.Any())
                 return Content("");
 

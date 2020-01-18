@@ -1,13 +1,17 @@
 ﻿using FluentValidation;
-using Grand.Web.Areas.Admin.Models.Common;
-using Grand.Services.Localization;
 using Grand.Framework.Validators;
+using Grand.Services.Localization;
+using Grand.Web.Areas.Admin.Models.Common;
+using System.Collections.Generic;
 
 namespace Grand.Web.Areas.Admin.Validators.Common
 {
     public class AddressValidator : BaseGrandValidator<AddressModel>
     {
-        public AddressValidator(ILocalizationService localizationService)
+        public AddressValidator(
+            IEnumerable<IValidatorConsumer<AddressModel>> validators,
+            ILocalizationService localizationService)
+            : base(validators)
         {
             RuleFor(x => x.FirstName)
                 .NotEmpty()

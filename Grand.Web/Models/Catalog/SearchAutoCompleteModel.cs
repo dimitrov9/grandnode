@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-
-namespace Grand.Web.Models.Catalog
+﻿namespace Grand.Web.Models.Catalog
 {
     public class SearchAutoCompleteModel
     {
@@ -11,6 +6,10 @@ namespace Grand.Web.Models.Catalog
         public string Label { get; set; }
         public string Url { get; set; }
         public string Desc { get; set; }
+        public string Price { get; set; }
+        public string PriceWithDiscount { get; set; }
+        public bool AllowCustomerReviews { get; set; }
+        public int Rating { get; set; }
         public string PictureUrl { get; set; }
     }
 }

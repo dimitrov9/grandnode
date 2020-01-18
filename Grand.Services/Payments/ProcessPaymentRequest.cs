@@ -1,6 +1,6 @@
+using Grand.Core.Domain.Catalog;
 using System;
 using System.Collections.Generic;
-using Grand.Core.Domain.Catalog;
 
 namespace Grand.Services.Payments
 {
@@ -12,7 +12,7 @@ namespace Grand.Services.Payments
     {
         public ProcessPaymentRequest()
         {
-            this.CustomValues = new Dictionary<string, object>();
+            CustomValues = new Dictionary<string, object>();
         }
 
         /// <summary>

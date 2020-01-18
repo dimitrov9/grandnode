@@ -53,7 +53,7 @@
             {
                 foreach (var item in Model.Topics)
                 {
-                    <a class="list-group-item list-group-item-action" href="@Url.RouteUrl("Topic", new {Sename = Html.GetTopicSeName(item.SystemName)})">@item.Title</a>
+                    <a class="list-group-item list-group-item-action" href="@Url.RouteUrl("Topic", new {Sename = await Html.GetTopicSeName(item.SystemName, Context)})">@item.Title</a>
                 }
             }
         </div>
@@ -72,19 +72,16 @@
     }
     @if (Model.Products.Any())
     {
-        <div class="col-lg-4 col-md-6">
+        <div class="col-12">
             <h2 class="generalTitle">@T("Sitemap.Products")</h2>
-            <div class="entity-body">
-                <ul>
-                    @foreach (var product in Model.Products)
-                    {
-                        <li><a href="@Url.RouteUrl("Product", new { SeName = product.SeName })">@product.Name</a></li>
-                    }
-                </ul>
+            <div class="list-group sitemap-products-group">
+                @foreach (var product in Model.Products)
+                {
+                    <a class="list-group-item list-group-item-action" href="@Url.RouteUrl("Product", new { SeName = product.SeName })">@product.Name</a>
+                }
             </div>
         </div>
     }
     @await Component.InvokeAsync("Widget", new { widgetZone = "sitemap_after" })
-
 </div>
 

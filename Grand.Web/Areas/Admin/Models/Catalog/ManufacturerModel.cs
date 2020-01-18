@@ -1,20 +1,19 @@
-﻿using Grand.Framework.Mvc.Models;
-using Microsoft.AspNetCore.Mvc.Rendering;
+﻿using FluentValidation.Attributes;
+using Grand.Framework.Localization;
+using Grand.Framework.Mapping;
 using Grand.Framework.Mvc.ModelBinding;
+using Grand.Framework.Mvc.Models;
+using Grand.Web.Areas.Admin.Models.Discounts;
+using Grand.Web.Areas.Admin.Validators.Catalog;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using FluentValidation.Attributes;
-using Grand.Web.Areas.Admin.Models.Customers;
-using Grand.Web.Areas.Admin.Models.Discounts;
-using Grand.Web.Areas.Admin.Models.Stores;
-using Grand.Web.Areas.Admin.Validators.Catalog;
-using Grand.Framework.Localization;
-using System;
 
 namespace Grand.Web.Areas.Admin.Models.Catalog
 {
     [Validator(typeof(ManufacturerValidator))]
-    public partial class ManufacturerModel : BaseGrandEntityModel, ILocalizedModel<ManufacturerLocalizedModel>
+    public partial class ManufacturerModel : BaseGrandEntityModel, ILocalizedModel<ManufacturerLocalizedModel>, IAclMappingModel, IStoreMappingModel
     {
         public ManufacturerModel()
         {
@@ -24,6 +23,9 @@ namespace Grand.Web.Areas.Admin.Models.Catalog
             }
             Locales = new List<ManufacturerLocalizedModel>();
             AvailableManufacturerTemplates = new List<SelectListItem>();
+            AvailableStores = new List<StoreModel>();
+            AvailableCustomerRoles = new List<CustomerRoleModel>();
+            AvailableSortOptions = new List<SelectListItem>();
         }
 
         [GrandResourceDisplayName("Admin.Catalog.Manufacturers.Fields.Name")]
@@ -74,8 +76,18 @@ namespace Grand.Web.Areas.Admin.Models.Catalog
         [GrandResourceDisplayName("Admin.Catalog.Manufacturers.Fields.ShowOnHomePage")]
         public bool ShowOnHomePage { get; set; }
 
+        [GrandResourceDisplayName("Admin.Catalog.Manufacturers.Fields.FeaturedProductsOnHomaPage")]
+        public bool FeaturedProductsOnHomaPage { get; set; }
+
         [GrandResourceDisplayName("Admin.Catalog.Manufacturers.Fields.IncludeInTopMenu")]
         public bool IncludeInTopMenu { get; set; }
+
+        [GrandResourceDisplayName("Admin.Catalog.Manufacturers.Fields.Icon")]
+        public string Icon { get; set; }
+
+        [GrandResourceDisplayName("Admin.Catalog.Manufacturers.Fields.DefaultSort")]
+        public int DefaultSort { get; set; }
+        public IList<SelectListItem> AvailableSortOptions { get; set; }
 
         [GrandResourceDisplayName("Admin.Catalog.Manufacturers.Fields.Published")]
         public bool Published { get; set; }
@@ -109,7 +121,7 @@ namespace Grand.Web.Areas.Admin.Models.Catalog
 
 
         #region Nested classes
-
+        [Validator(typeof(ManufacturerProductModelValidator))]
         public partial class ManufacturerProductModel : BaseGrandEntityModel
         {
             public string ManufacturerId { get; set; }
@@ -126,6 +138,7 @@ namespace Grand.Web.Areas.Admin.Models.Catalog
             public int DisplayOrder { get; set; }
         }
 
+        [Validator(typeof(AddManufacturerProductModelValidator))]
         public partial class AddManufacturerProductModel : BaseGrandModel
         {
             public AddManufacturerProductModel()
@@ -180,7 +193,7 @@ namespace Grand.Web.Areas.Admin.Models.Catalog
         #endregion
     }
 
-    public partial class ManufacturerLocalizedModel : ILocalizedModelLocal
+    public partial class ManufacturerLocalizedModel : ILocalizedModelLocal, ISlugModelLocal
     {
         public string LanguageId { get; set; }
 

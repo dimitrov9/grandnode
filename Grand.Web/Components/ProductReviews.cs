@@ -1,9 +1,10 @@
-﻿using Grand.Web.Services;
-using Microsoft.AspNetCore.Mvc;
-using Grand.Core.Domain.Catalog;
-using Grand.Services.Catalog;
+﻿using Grand.Core.Domain.Catalog;
 using Grand.Framework.Components;
+using Grand.Services.Catalog;
 using Grand.Web.Models.Catalog;
+using Grand.Web.Interfaces;
+using Microsoft.AspNetCore.Mvc;
+using System.Threading.Tasks;
 
 namespace Grand.Web.Components
 {
@@ -22,23 +23,22 @@ namespace Grand.Web.Components
             IProductViewModelService productViewModelService,
             CatalogSettings catalogSettings)
         {
-            this._productService = productService;
-            this._catalogSettings = catalogSettings;
-            this._productViewModelService = productViewModelService;
+            _productService = productService;
+            _catalogSettings = catalogSettings;
+            _productViewModelService = productViewModelService;
         }
 
         #endregion
 
         #region Invoker
-
-        public IViewComponentResult Invoke(string productId)
+        public async Task<IViewComponentResult> InvokeAsync(string productId)
         {
-            var product = _productService.GetProductById(productId);
+            var product = await _productService.GetProductById(productId);
             if (product == null || !product.Published || !product.AllowCustomerReviews)
                 return Content("");
 
             var model = new ProductReviewsModel();
-            _productViewModelService.PrepareProductReviewsModel(model, product, _catalogSettings.NumberOfReview);
+            await _productViewModelService.PrepareProductReviewsModel(model, product, _catalogSettings.NumberOfReview);
             
             return View(model);
         }

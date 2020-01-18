@@ -1,34 +1,35 @@
-﻿using System;
+﻿using Grand.Core;
+using Grand.Core.Domain.Catalog;
+using Grand.Core.Domain.Common;
+using Grand.Core.Domain.Customers;
+using Grand.Core.Domain.Directory;
+using Grand.Core.Domain.Logging;
+using Grand.Core.Domain.Messages;
+using Grand.Core.Domain.Orders;
+using Grand.Core.Extensions;
+using Grand.Services.Catalog;
+using Grand.Services.Common;
+using Grand.Services.Customers;
+using Grand.Services.Directory;
+using Grand.Services.Discounts;
+using Grand.Services.ExportImport.Help;
+using Grand.Services.Logging;
+using Grand.Services.Media;
+using Grand.Services.Messages;
+using Grand.Services.Orders;
+using Grand.Services.Seo;
+using Grand.Services.Shipping;
+using Grand.Services.Stores;
+using Microsoft.Extensions.DependencyInjection;
+using OfficeOpenXml;
+using OfficeOpenXml.Style;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using System.Xml;
-using Grand.Core;
-using Grand.Core.Domain.Catalog;
-using Grand.Core.Domain.Customers;
-using Grand.Core.Domain.Directory;
-using Grand.Core.Domain.Messages;
-using Grand.Core.Domain.Orders;
-using Grand.Services.Catalog;
-using Grand.Services.Common;
-using Grand.Services.Media;
-using Grand.Services.Messages;
-using Grand.Services.Seo;
-using Grand.Services.Stores;
-using Grand.Core.Infrastructure;
-using Grand.Services.Directory;
-using Grand.Services.Shipping;
-using Grand.Services.ExportImport.Help;
-using Grand.Services.Discounts;
-using OfficeOpenXml.Style;
-using Grand.Core.Extensions;
-using OfficeOpenXml;
-using Grand.Services.Orders;
-using Grand.Services.Customers;
-using Grand.Core.Domain.Logging;
-using Grand.Services.Logging;
-using Grand.Core.Domain.Common;
 
 namespace Grand.Services.ExportImport
 {
@@ -47,6 +48,7 @@ namespace Grand.Services.ExportImport
         private readonly INewsLetterSubscriptionService _newsLetterSubscriptionService;
         private readonly IStoreService _storeService;
         private readonly IDiscountService _discountService;
+        private readonly IServiceProvider _serviceProvider;
         #endregion
 
         #region Ctor
@@ -58,25 +60,26 @@ namespace Grand.Services.ExportImport
             INewsLetterSubscriptionService newsLetterSubscriptionService,
             IStoreService storeService,
             IProductService productService,
-            IDiscountService discountService)
+            IDiscountService discountService,
+            IServiceProvider serviceProvider)
         {
-            this._categoryService = categoryService;
-            this._manufacturerService = manufacturerService;
-            this._productAttributeService = productAttributeService;
-            this._pictureService = pictureService;
-            this._newsLetterSubscriptionService = newsLetterSubscriptionService;
-            this._storeService = storeService;
-            this._productService = productService;
-            this._discountService = discountService;
+            _categoryService = categoryService;
+            _manufacturerService = manufacturerService;
+            _productAttributeService = productAttributeService;
+            _pictureService = pictureService;
+            _newsLetterSubscriptionService = newsLetterSubscriptionService;
+            _storeService = storeService;
+            _productService = productService;
+            _discountService = discountService;
+            _serviceProvider = serviceProvider;
         }
 
         #endregion
 
         #region Utilities
 
-        protected virtual void WriteCategories(XmlWriter xmlWriter, string parentCategoryId)
+        protected virtual async Task WriteCategories(XmlWriter xmlWriter, List<Category> categories)
         {
-            var categories = _categoryService.GetAllCategoriesByParentCategoryId(parentCategoryId, true);
             if (categories != null && categories.Count > 0)
             {
                 foreach (var category in categories)
@@ -101,17 +104,17 @@ namespace Grand.Services.ExportImport
                     xmlWriter.WriteElementString("Published", null, category.Published.ToString());
                     xmlWriter.WriteElementString("Flag", null, category.Flag);
                     xmlWriter.WriteElementString("FlagStyle", null, category.FlagStyle);
-
+                    xmlWriter.WriteElementString("Icon", null, category.Icon);
                     xmlWriter.WriteElementString("DisplayOrder", null, category.DisplayOrder.ToString());
                     xmlWriter.WriteElementString("CreatedOnUtc", null, category.CreatedOnUtc.ToString());
                     xmlWriter.WriteElementString("UpdatedOnUtc", null, category.UpdatedOnUtc.ToString());
 
 
                     xmlWriter.WriteStartElement("Products");
-                    var productCategories = _categoryService.GetProductCategoriesByCategoryId(category.Id, showHidden: true);
+                    var productCategories = await _categoryService.GetProductCategoriesByCategoryId(category.Id, showHidden: true);
                     foreach (var productCategory in productCategories)
                     {
-                        var cat = _categoryService.GetCategoryById(productCategory.CategoryId);
+                        var cat = await _categoryService.GetCategoryById(productCategory.CategoryId);
                         if (cat != null)
                         {
                             xmlWriter.WriteStartElement("ProductCategory");
@@ -123,10 +126,6 @@ namespace Grand.Services.ExportImport
                             xmlWriter.WriteEndElement();
                         }
                     }
-                    xmlWriter.WriteEndElement();
-
-                    xmlWriter.WriteStartElement("SubCategories");
-                    WriteCategories(xmlWriter, category.Id);
                     xmlWriter.WriteEndElement();
                     xmlWriter.WriteEndElement();
                 }
@@ -142,16 +141,17 @@ namespace Grand.Services.ExportImport
         /// </summary>
         /// <param name="manufacturers">Manufacturers</param>
         /// <returns>Result in XML format</returns>
-        public virtual string ExportManufacturersToXml(IList<Manufacturer> manufacturers)
+        public virtual async Task<string> ExportManufacturersToXml(IList<Manufacturer> manufacturers)
         {
             var sb = new StringBuilder();
             var stringWriter = new StringWriter(sb);
             var xwSettings = new XmlWriterSettings
             {
-                ConformanceLevel = ConformanceLevel.Auto
+                ConformanceLevel = ConformanceLevel.Auto,
+                Async = true,
             };
             var xmlWriter = XmlWriter.Create(stringWriter, xwSettings);
-            xmlWriter.WriteStartDocument();
+            await xmlWriter.WriteStartDocumentAsync();
             xmlWriter.WriteStartElement("Manufacturers");
             xmlWriter.WriteAttributeString("Version", GrandVersion.CurrentVersion);
 
@@ -167,7 +167,7 @@ namespace Grand.Services.ExportImport
                 xmlWriter.WriteElementString("MetaDescription", null, manufacturer.MetaDescription);
                 xmlWriter.WriteElementString("MetaTitle", null, manufacturer.MetaTitle);
                 xmlWriter.WriteElementString("SEName", null, manufacturer.GetSeName(""));
-                xmlWriter.WriteElementString("PictureId", null, manufacturer.PictureId.ToString());
+                xmlWriter.WriteElementString("PictureId", null, manufacturer.PictureId);
                 xmlWriter.WriteElementString("PageSize", null, manufacturer.PageSize.ToString());
                 xmlWriter.WriteElementString("AllowCustomersToSelectPageSize", null, manufacturer.AllowCustomersToSelectPageSize.ToString());
                 xmlWriter.WriteElementString("PageSizeOptions", null, manufacturer.PageSizeOptions);
@@ -178,12 +178,13 @@ namespace Grand.Services.ExportImport
                 xmlWriter.WriteElementString("UpdatedOnUtc", null, manufacturer.UpdatedOnUtc.ToString());
 
                 xmlWriter.WriteStartElement("Products");
-                var productManufacturers = _manufacturerService.GetProductManufacturersByManufacturerId(manufacturer.Id, showHidden: true);
+                var productManufacturers = await _manufacturerService.GetProductManufacturersByManufacturerId(manufacturer.Id, showHidden: true);
                 if (productManufacturers != null)
                 {
+                    var productService = _serviceProvider.GetRequiredService<IProductService>();
                     foreach (var productManufacturer in productManufacturers)
                     {
-                        var product = EngineContext.Current.Resolve<IProductService>().GetProductById(productManufacturer.ProductId);
+                        var product = await productService.GetProductById(productManufacturer.ProductId);
                         if (product != null)
                         {
                             xmlWriter.WriteStartElement("ProductManufacturer");
@@ -204,7 +205,7 @@ namespace Grand.Services.ExportImport
 
             xmlWriter.WriteEndElement();
             xmlWriter.WriteEndDocument();
-            xmlWriter.Flush();
+            await xmlWriter.FlushAsync();
             return stringWriter.ToString();
         }
 
@@ -226,7 +227,7 @@ namespace Grand.Services.ExportImport
                 new PropertyByName<Manufacturer>("MetaDescription", p => p.MetaDescription),
                 new PropertyByName<Manufacturer>("MetaTitle", p => p.MetaTitle),
                 new PropertyByName<Manufacturer>("SeName", p => p.SeName),
-                new PropertyByName<Manufacturer>("Picture", p => GetPictures(p.PictureId)),
+                new PropertyByName<Manufacturer>("Picture", p => GetPictures(p.PictureId).Result),
                 new PropertyByName<Manufacturer>("PageSize", p => p.PageSize),
                 new PropertyByName<Manufacturer>("AllowCustomersToSelectPageSize", p => p.AllowCustomersToSelectPageSize),
                 new PropertyByName<Manufacturer>("PageSizeOptions", p => p.PageSizeOptions),
@@ -241,22 +242,23 @@ namespace Grand.Services.ExportImport
         /// Export category list to xml
         /// </summary>
         /// <returns>Result in XML format</returns>
-        public virtual string ExportCategoriesToXml()
+        public virtual async Task<string> ExportCategoriesToXml(IEnumerable<Category> categories)
         {
             var sb = new StringBuilder();
             var stringWriter = new StringWriter(sb);
             var xwSettings = new XmlWriterSettings
             {
-                ConformanceLevel = ConformanceLevel.Auto
+                ConformanceLevel = ConformanceLevel.Auto,
+                Async = true,
             };
             var xmlWriter = XmlWriter.Create(stringWriter, xwSettings);
-            xmlWriter.WriteStartDocument();
+            await xmlWriter.WriteStartDocumentAsync();
             xmlWriter.WriteStartElement("Categories");
             xmlWriter.WriteAttributeString("Version", GrandVersion.CurrentVersion);
-            WriteCategories(xmlWriter, "");
+            await WriteCategories(xmlWriter, categories.ToList());
             xmlWriter.WriteEndElement();
             xmlWriter.WriteEndDocument();
-            xmlWriter.Flush();
+            await xmlWriter.FlushAsync();
             return stringWriter.ToString();
         }
 
@@ -278,7 +280,7 @@ namespace Grand.Services.ExportImport
                 new PropertyByName<Category>("MetaTitle", p => p.MetaTitle),
                 new PropertyByName<Category>("SeName", p => p.SeName),
                 new PropertyByName<Category>("ParentCategoryId", p => p.ParentCategoryId),
-                new PropertyByName<Category>("Picture", p => GetPictures(p.PictureId)),
+                new PropertyByName<Category>("Picture", p => GetPictures(p.PictureId).Result),
                 new PropertyByName<Category>("PageSize", p => p.PageSize),
                 new PropertyByName<Category>("AllowCustomersToSelectPageSize", p => p.AllowCustomersToSelectPageSize),
                 new PropertyByName<Category>("PageSizeOptions", p => p.PageSizeOptions),
@@ -288,6 +290,7 @@ namespace Grand.Services.ExportImport
                 new PropertyByName<Category>("Published", p => p.Published),
                 new PropertyByName<Category>("Flag", p => p.Flag),
                 new PropertyByName<Category>("FlagStyle", p => p.FlagStyle),
+                new PropertyByName<Category>("Icon", p => p.Icon),
                 new PropertyByName<Category>("DisplayOrder", p => p.DisplayOrder)
             };
             return ExportToXlsx(properties, categories);
@@ -297,16 +300,17 @@ namespace Grand.Services.ExportImport
         /// </summary>
         /// <param name="products">Products</param>
         /// <returns>Result in XML format</returns>
-        public virtual string ExportProductsToXml(IList<Product> products)
+        public virtual async Task<string> ExportProductsToXml(IList<Product> products)
         {
             var sb = new StringBuilder();
             var stringWriter = new StringWriter(sb);
             var xwSettings = new XmlWriterSettings
             {
-                ConformanceLevel = ConformanceLevel.Auto
+                ConformanceLevel = ConformanceLevel.Auto,
+                Async = true
             };
             var xmlWriter = XmlWriter.Create(stringWriter, xwSettings);
-            xmlWriter.WriteStartDocument();
+            await xmlWriter.WriteStartDocumentAsync();
             xmlWriter.WriteStartElement("Products");
             xmlWriter.WriteAttributeString("Version", GrandVersion.CurrentVersion);
 
@@ -366,7 +370,7 @@ namespace Grand.Services.ExportImport
                 xmlWriter.WriteElementString("DeliveryDateId", null, product.DeliveryDateId);
                 xmlWriter.WriteElementString("IsTaxExempt", null, product.IsTaxExempt.ToString());
                 xmlWriter.WriteElementString("TaxCategoryId", null, product.TaxCategoryId);
-                xmlWriter.WriteElementString("IsTelecommunicationsOrBroadcastingOrElectronicServices", null, product.IsTelecommunicationsOrBroadcastingOrElectronicServices.ToString());
+                xmlWriter.WriteElementString("IsTele", null, product.IsTele.ToString());
                 xmlWriter.WriteElementString("ManageInventoryMethodId", null, product.ManageInventoryMethodId.ToString());
                 xmlWriter.WriteElementString("UseMultipleWarehouses", null, product.UseMultipleWarehouses.ToString());
                 xmlWriter.WriteElementString("WarehouseId", null, product.WarehouseId);
@@ -414,7 +418,7 @@ namespace Grand.Services.ExportImport
 
                 foreach (var appliedDiscount in product.AppliedDiscounts)
                 {
-                    var discount = _discountService.GetDiscountById(appliedDiscount);
+                    var discount = await _discountService.GetDiscountById(appliedDiscount);
                     if (discount != null)
                     {
                         xmlWriter.WriteStartElement("Discount");
@@ -446,10 +450,11 @@ namespace Grand.Services.ExportImport
                 var productAttributMappings = product.ProductAttributeMappings;
                 foreach (var productAttributeMapping in productAttributMappings)
                 {
+                    var pa = await _productAttributeService.GetProductAttributeById(productAttributeMapping.ProductAttributeId);
                     xmlWriter.WriteStartElement("ProductAttributeMapping");
                     xmlWriter.WriteElementString("ProductAttributeMappingId", null, productAttributeMapping.Id);
                     xmlWriter.WriteElementString("ProductAttributeId", null, productAttributeMapping.ProductAttributeId);
-                    xmlWriter.WriteElementString("ProductAttributeName", null, _productAttributeService.GetProductAttributeById(productAttributeMapping.ProductAttributeId).Name);
+                    xmlWriter.WriteElementString("ProductAttributeName", null, pa.Name);
                     xmlWriter.WriteElementString("TextPrompt", null, productAttributeMapping.TextPrompt);
                     xmlWriter.WriteElementString("IsRequired", null, productAttributeMapping.IsRequired.ToString());
                     xmlWriter.WriteElementString("AttributeControlTypeId", null, productAttributeMapping.AttributeControlTypeId.ToString());
@@ -569,7 +574,7 @@ namespace Grand.Services.ExportImport
 
             xmlWriter.WriteEndElement();
             xmlWriter.WriteEndDocument();
-            xmlWriter.Flush();
+            await xmlWriter.FlushAsync();
             return stringWriter.ToString();
         }
 
@@ -631,7 +636,7 @@ namespace Grand.Services.ExportImport
                 new PropertyByName<Product>("DeliveryDateId", p => p.DeliveryDateId),
                 new PropertyByName<Product>("IsTaxExempt", p => p.IsTaxExempt),
                 new PropertyByName<Product>("TaxCategoryId", p => p.TaxCategoryId),
-                new PropertyByName<Product>("IsTelecommunicationsOrBroadcastingOrElectronicServices", p => p.IsTelecommunicationsOrBroadcastingOrElectronicServices),
+                new PropertyByName<Product>("IsTele", p => p.IsTele),
                 new PropertyByName<Product>("ManageInventoryMethodId", p => p.ManageInventoryMethodId),
                 new PropertyByName<Product>("UseMultipleWarehouses", p => p.UseMultipleWarehouses),
                 new PropertyByName<Product>("WarehouseId", p => p.WarehouseId),
@@ -674,9 +679,9 @@ namespace Grand.Services.ExportImport
                 new PropertyByName<Product>("Height", p => p.Height),
                 new PropertyByName<Product>("CategoryIds", p =>  string.Join(";", p.ProductCategories.Select(n => n.CategoryId).ToArray())),
                 new PropertyByName<Product>("ManufacturerIds", p=>  string.Join(";", p.ProductManufacturers.Select(n => n.ManufacturerId).ToArray())),
-                new PropertyByName<Product>("Picture1", p => GetPictures(p)[0]),
-                new PropertyByName<Product>("Picture2", p => GetPictures(p)[1]),
-                new PropertyByName<Product>("Picture3", p => GetPictures(p)[2])
+                new PropertyByName<Product>("Picture1", p => GetPictures(p).Result[0]),
+                new PropertyByName<Product>("Picture2", p => GetPictures(p).Result[1]),
+                new PropertyByName<Product>("Picture3", p => GetPictures(p).Result[2])
             };
 
             return ExportToXlsx(properties, products);
@@ -687,16 +692,17 @@ namespace Grand.Services.ExportImport
         /// </summary>
         /// <param name="orders">Orders</param>
         /// <returns>Result in XML format</returns>
-        public virtual string ExportOrdersToXml(IList<Order> orders)
+        public virtual async Task<string> ExportOrdersToXml(IList<Order> orders)
         {
             var sb = new StringBuilder();
             var stringWriter = new StringWriter(sb);
             var xwSettings = new XmlWriterSettings
             {
-                ConformanceLevel = ConformanceLevel.Auto
+                ConformanceLevel = ConformanceLevel.Auto,
+                Async = true
             };
             var xmlWriter = XmlWriter.Create(stringWriter, xwSettings);
-            xmlWriter.WriteStartDocument();
+            await xmlWriter.WriteStartDocumentAsync();
             xmlWriter.WriteStartElement("Orders");
             xmlWriter.WriteAttributeString("Version", GrandVersion.CurrentVersion);
 
@@ -767,7 +773,7 @@ namespace Grand.Services.ExportImport
                         xmlWriter.WriteElementString("OrderItemGuid", null, orderItem.OrderItemGuid.ToString());
                         xmlWriter.WriteElementString("ProductId", null, orderItem.ProductId.ToString());
 
-                        var product = _productService.GetProductByIdIncludeArch(orderItem.ProductId);
+                        var product = await _productService.GetProductByIdIncludeArch(orderItem.ProductId);
                         if (product != null)
                         {
                             xmlWriter.WriteElementString("ProductName", null, product.Name);
@@ -791,8 +797,8 @@ namespace Grand.Services.ExportImport
                 }
 
                 //shipments
-
-                var shipments = EngineContext.Current.Resolve<IShipmentService>().GetShipmentsByOrder(order.Id);
+                var shipmentService = _serviceProvider.GetRequiredService<IShipmentService>();
+                var shipments = await shipmentService.GetShipmentsByOrder(order.Id);
                 if (shipments.Count > 0)
                 {
                     xmlWriter.WriteStartElement("Shipments");
@@ -817,7 +823,7 @@ namespace Grand.Services.ExportImport
 
             xmlWriter.WriteEndElement();
             xmlWriter.WriteEndDocument();
-            xmlWriter.Flush();
+            await xmlWriter.FlushAsync();
             return stringWriter.ToString();
         }
 
@@ -846,7 +852,7 @@ namespace Grand.Services.ExportImport
         /// Export customer - personal info to XLSX
         /// </summary>
         /// <param name="customer">Customer</param>
-        public virtual byte[] ExportCustomerToXlsx(Customer customer, string stroreId)
+        public virtual async Task<byte[]> ExportCustomerToXlsx(Customer customer, string stroreId)
         {
             using (var stream = new MemoryStream())
             {
@@ -871,9 +877,9 @@ namespace Grand.Services.ExportImport
                     }
 
                     //orders
-                    var orderService = EngineContext.Current.Resolve<IOrderService>();
-                    var customerService = EngineContext.Current.Resolve<ICustomerService>();
-                    var orders = orderService.SearchOrders(customerId: customer.Id).ToList();
+                    var orderService = _serviceProvider.GetRequiredService<IOrderService>();
+                    var customerService = _serviceProvider.GetRequiredService<ICustomerService>();
+                    var orders = await orderService.SearchOrders(customerId: customer.Id);
 
                     var worksheetOrder = xlPackage.Workbook.Worksheets.Add("Orders");
                     var managerOrder = new PropertyManager<Order>(PropertyByOrder());
@@ -887,8 +893,8 @@ namespace Grand.Services.ExportImport
                     }
 
                     //activity log
-                    var customerActivityService = EngineContext.Current.Resolve<ICustomerActivityService>();
-                    var actlogs = customerActivityService.GetAllActivities(customerId: customer.Id).ToList();
+                    var customerActivityService = _serviceProvider.GetRequiredService<ICustomerActivityService>();
+                    var actlogs = await customerActivityService.GetAllActivities(customerId: customer.Id);
 
                     var worksheetLog = xlPackage.Workbook.Worksheets.Add("ActivityLogs");
                     var managerLog = new PropertyManager<ActivityLog>(PropertyByActivityLog());
@@ -902,8 +908,8 @@ namespace Grand.Services.ExportImport
                     }
 
                     //contact us
-                    var contactUsService = EngineContext.Current.Resolve<IContactUsService>();
-                    var contacts = contactUsService.GetAllContactUs(customerId: customer.Id).ToList();
+                    var contactUsService = _serviceProvider.GetRequiredService<IContactUsService>();
+                    var contacts = await contactUsService.GetAllContactUs(customerId: customer.Id);
 
                     var worksheetContact = xlPackage.Workbook.Worksheets.Add("MessageContact");
                     var managerContact = new PropertyManager<ContactUs>(PropertyByContactForm());
@@ -917,8 +923,8 @@ namespace Grand.Services.ExportImport
                     }
 
                     //emails
-                    var queuedEmailService = EngineContext.Current.Resolve<IQueuedEmailService>();
-                    var queuedEmails = queuedEmailService.SearchEmails("", customer.Email, null, null, false, true, 100, true);
+                    var queuedEmailService = _serviceProvider.GetRequiredService<IQueuedEmailService>();
+                    var queuedEmails = await queuedEmailService.SearchEmails("", customer.Email, null, null, false, true, 100, true);
 
                     var worksheetEmails = xlPackage.Workbook.Worksheets.Add("Emails");
                     var managerEmails = new PropertyManager<QueuedEmail>(PropertyByEmails());
@@ -932,14 +938,14 @@ namespace Grand.Services.ExportImport
                     }
 
                     //Newsletter subscribe - history of change
-                    var newsletterService = EngineContext.Current.Resolve<INewsLetterSubscriptionService>();
-                    var newsletter = newsletterService.GetNewsLetterSubscriptionByEmailAndStoreId(customer.Email, stroreId);
+                    var newsletterService = _serviceProvider.GetRequiredService<INewsLetterSubscriptionService>();
+                    var newsletter = await newsletterService.GetNewsLetterSubscriptionByEmailAndStoreId(customer.Email, stroreId);
                     if (newsletter != null)
                     {
                         var worksheetNewsletter = xlPackage.Workbook.Worksheets.Add("Newsletter subscribe - history of change");
                         var managerNewsletter = new PropertyManager<NewsLetterSubscription>(PropertyByNewsLetterSubscription());
                         managerNewsletter.WriteCaption(worksheetNewsletter, SetCaptionStyle);
-                        var newsletterhistory = newsletter.GetHistoryObject();
+                        var newsletterhistory = await newsletter.GetHistoryObject(_serviceProvider.GetRequiredService<IHistoryService>());
                         row = 2;
                         foreach (var item in newsletterhistory)
                         {
@@ -968,16 +974,17 @@ namespace Grand.Services.ExportImport
         /// </summary>
         /// <param name="customers">Customers</param>
         /// <returns>Result in XML format</returns>
-        public virtual string ExportCustomersToXml(IList<Customer> customers)
+        public virtual async Task<string> ExportCustomersToXml(IList<Customer> customers)
         {
             var sb = new StringBuilder();
             var stringWriter = new StringWriter(sb);
             var xwSettings = new XmlWriterSettings
             {
-                ConformanceLevel = ConformanceLevel.Auto
+                ConformanceLevel = ConformanceLevel.Auto,
+                Async = true,
             };
             var xmlWriter = XmlWriter.Create(stringWriter, xwSettings);
-            xmlWriter.WriteStartDocument();
+            await xmlWriter.WriteStartDocumentAsync();
             xmlWriter.WriteStartElement("Customers");
             xmlWriter.WriteAttributeString("Version", GrandVersion.CurrentVersion);
 
@@ -1002,41 +1009,40 @@ namespace Grand.Services.ExportImport
                 xmlWriter.WriteElementString("IsAdministrator", null, customer.IsAdmin().ToString());
                 xmlWriter.WriteElementString("IsForumModerator", null, customer.IsForumModerator().ToString());
 
-                xmlWriter.WriteElementString("FirstName", null, customer.GetAttribute<string>(SystemCustomerAttributeNames.FirstName));
-                xmlWriter.WriteElementString("LastName", null, customer.GetAttribute<string>(SystemCustomerAttributeNames.LastName));
-                xmlWriter.WriteElementString("Gender", null, customer.GetAttribute<string>(SystemCustomerAttributeNames.Gender));
-                xmlWriter.WriteElementString("Company", null, customer.GetAttribute<string>(SystemCustomerAttributeNames.Company));
+                xmlWriter.WriteElementString("FirstName", null, customer.GetAttributeFromEntity<string>(SystemCustomerAttributeNames.FirstName));
+                xmlWriter.WriteElementString("LastName", null, customer.GetAttributeFromEntity<string>(SystemCustomerAttributeNames.LastName));
+                xmlWriter.WriteElementString("Gender", null, customer.GetAttributeFromEntity<string>(SystemCustomerAttributeNames.Gender));
+                xmlWriter.WriteElementString("Company", null, customer.GetAttributeFromEntity<string>(SystemCustomerAttributeNames.Company));
 
-                xmlWriter.WriteElementString("CountryId", null, customer.GetAttribute<int>(SystemCustomerAttributeNames.CountryId).ToString());
-                xmlWriter.WriteElementString("StreetAddress", null, customer.GetAttribute<string>(SystemCustomerAttributeNames.StreetAddress));
-                xmlWriter.WriteElementString("StreetAddress2", null, customer.GetAttribute<string>(SystemCustomerAttributeNames.StreetAddress2));
-                xmlWriter.WriteElementString("ZipPostalCode", null, customer.GetAttribute<string>(SystemCustomerAttributeNames.ZipPostalCode));
-                xmlWriter.WriteElementString("City", null, customer.GetAttribute<string>(SystemCustomerAttributeNames.City));
-                xmlWriter.WriteElementString("CountryId", null, customer.GetAttribute<int>(SystemCustomerAttributeNames.CountryId).ToString());
-                xmlWriter.WriteElementString("StateProvinceId", null, customer.GetAttribute<int>(SystemCustomerAttributeNames.StateProvinceId).ToString());
-                xmlWriter.WriteElementString("Phone", null, customer.GetAttribute<string>(SystemCustomerAttributeNames.Phone));
-                xmlWriter.WriteElementString("Fax", null, customer.GetAttribute<string>(SystemCustomerAttributeNames.Fax));
-                xmlWriter.WriteElementString("VatNumber", null, customer.GetAttribute<string>(SystemCustomerAttributeNames.VatNumber));
-                xmlWriter.WriteElementString("VatNumberStatusId", null, customer.GetAttribute<int>(SystemCustomerAttributeNames.VatNumberStatusId).ToString());
-                xmlWriter.WriteElementString("TimeZoneId", null, customer.GetAttribute<string>(SystemCustomerAttributeNames.TimeZoneId));
+                xmlWriter.WriteElementString("CountryId", null, customer.GetAttributeFromEntity<string>(SystemCustomerAttributeNames.CountryId));
+                xmlWriter.WriteElementString("StateProvinceId", null, customer.GetAttributeFromEntity<string>(SystemCustomerAttributeNames.StateProvinceId));
+                xmlWriter.WriteElementString("StreetAddress", null, customer.GetAttributeFromEntity<string>(SystemCustomerAttributeNames.StreetAddress));
+                xmlWriter.WriteElementString("StreetAddress2", null, customer.GetAttributeFromEntity<string>(SystemCustomerAttributeNames.StreetAddress2));
+                xmlWriter.WriteElementString("ZipPostalCode", null, customer.GetAttributeFromEntity<string>(SystemCustomerAttributeNames.ZipPostalCode));
+                xmlWriter.WriteElementString("City", null, customer.GetAttributeFromEntity<string>(SystemCustomerAttributeNames.City));
+                xmlWriter.WriteElementString("Phone", null, customer.GetAttributeFromEntity<string>(SystemCustomerAttributeNames.Phone));
+                xmlWriter.WriteElementString("Fax", null, customer.GetAttributeFromEntity<string>(SystemCustomerAttributeNames.Fax));
+                xmlWriter.WriteElementString("VatNumber", null, customer.GetAttributeFromEntity<string>(SystemCustomerAttributeNames.VatNumber));
+                xmlWriter.WriteElementString("VatNumberStatusId", null, customer.GetAttributeFromEntity<int>(SystemCustomerAttributeNames.VatNumberStatusId).ToString());
+                xmlWriter.WriteElementString("TimeZoneId", null, customer.GetAttributeFromEntity<string>(SystemCustomerAttributeNames.TimeZoneId));
 
-                foreach (var store in _storeService.GetAllStores())
+                foreach (var store in await _storeService.GetAllStores())
                 {
-                    var newsletter = _newsLetterSubscriptionService.GetNewsLetterSubscriptionByEmailAndStoreId(customer.Email, store.Id);
+                    var newsletter = await _newsLetterSubscriptionService.GetNewsLetterSubscriptionByEmailAndStoreId(customer.Email, store.Id);
                     bool subscribedToNewsletters = newsletter != null && newsletter.Active;
                     xmlWriter.WriteElementString(string.Format("Newsletter-in-store-{0}", store.Id), null, subscribedToNewsletters.ToString());
                 }
 
-                xmlWriter.WriteElementString("AvatarPictureId", null, customer.GetAttribute<string>(SystemCustomerAttributeNames.AvatarPictureId)?.ToString());
-                xmlWriter.WriteElementString("ForumPostCount", null, customer.GetAttribute<int>(SystemCustomerAttributeNames.ForumPostCount).ToString());
-                xmlWriter.WriteElementString("Signature", null, customer.GetAttribute<string>(SystemCustomerAttributeNames.Signature));
+                xmlWriter.WriteElementString("AvatarPictureId", null, customer.GetAttributeFromEntity<string>(SystemCustomerAttributeNames.AvatarPictureId)?.ToString());
+                xmlWriter.WriteElementString("ForumPostCount", null, customer.GetAttributeFromEntity<int>(SystemCustomerAttributeNames.ForumPostCount).ToString());
+                xmlWriter.WriteElementString("Signature", null, customer.GetAttributeFromEntity<string>(SystemCustomerAttributeNames.Signature));
 
                 xmlWriter.WriteEndElement();
             }
 
             xmlWriter.WriteEndElement();
             xmlWriter.WriteEndDocument();
-            xmlWriter.Flush();
+            await xmlWriter.FlushAsync();
             return stringWriter.ToString();
         }
 
@@ -1061,6 +1067,8 @@ namespace Grand.Services.ExportImport
                 sb.Append(subscription.CreatedOnUtc);
                 sb.Append(separator);
                 sb.Append(subscription.StoreId);
+                sb.Append(separator);
+                sb.Append(string.Join(';', subscription.Categories));
                 sb.Append(Environment.NewLine);  //new line
             }
             return sb.ToString();
@@ -1089,16 +1097,17 @@ namespace Grand.Services.ExportImport
         /// </summary>
         /// <param name="states">States</param>
         /// <returns>Result in TXT (string) format</returns>
-        public virtual string ExportStatesToTxt(IList<StateProvince> states)
+        public virtual async Task<string> ExportStatesToTxt(IList<StateProvince> states)
         {
             if (states == null)
                 throw new ArgumentNullException("states");
 
             const string separator = ",";
             var sb = new StringBuilder();
+            var countryService = _serviceProvider.GetRequiredService<ICountryService>();
             foreach (var state in states)
             {
-                var country = EngineContext.Current.Resolve<ICountryService>().GetCountryById(state.CountryId);
+                var country = await countryService.GetCountryById(state.CountryId);
                 sb.Append(country.TwoLetterIsoCode);
                 sb.Append(separator);
                 sb.Append(state.Name);
@@ -1144,7 +1153,7 @@ namespace Grand.Services.ExportImport
             }
         }
 
-        private string[] GetPictures(Product product)
+        private async Task<string[]> GetPictures(Product product)
         {
             string picture1 = null;
             string picture2 = null;
@@ -1152,8 +1161,8 @@ namespace Grand.Services.ExportImport
             int i = 0;
             foreach (var picture in product.ProductPictures.Take(3))
             {
-                var pic = _pictureService.GetPictureById(picture.PictureId);
-                var pictureLocalPath = _pictureService.GetThumbLocalPath(pic);
+                var pic = await _pictureService.GetPictureById(picture.PictureId);
+                var pictureLocalPath = await _pictureService.GetThumbLocalPath(pic);
                 switch (i)
                 {
                     case 0:
@@ -1177,10 +1186,10 @@ namespace Grand.Services.ExportImport
         /// </summary>
         /// <param name="pictureId">Picture ID</param>
         /// <returns>Path to the image file</returns>
-        protected virtual string GetPictures(string pictureId)
+        protected virtual async Task<string> GetPictures(string pictureId)
         {
-            var picture = _pictureService.GetPictureById(pictureId);
-            return _pictureService.GetThumbLocalPath(picture);
+            var picture = await _pictureService.GetPictureById(pictureId);
+            return await _pictureService.GetThumbLocalPath(picture);
         }
 
         private void SetCaptionStyle(ExcelStyle style)
@@ -1231,8 +1240,8 @@ namespace Grand.Services.ExportImport
                     new PropertyByName<Order>("BillingEmail", p=>p.BillingAddress.Return(billingAddress=>billingAddress.Email, "")),
                     new PropertyByName<Order>("BillingCompany", p=>p.BillingAddress.Return(billingAddress=>billingAddress.Company, "")),
                     new PropertyByName<Order>("BillingVatNumber", p=>p.BillingAddress.Return(billingAddress=>billingAddress.VatNumber, "")),
-                    new PropertyByName<Order>("BillingCountry",p=>p.BillingAddress.Return(billingAddress=>EngineContext.Current.Resolve<ICountryService>().GetCountryById(billingAddress.CountryId), null).Return(country=>country.Name,"")),
-                    new PropertyByName<Order>("BillingStateProvince",p=>p.BillingAddress.Return(billingAddress=>EngineContext.Current.Resolve<IStateProvinceService>().GetStateProvinceById(billingAddress.StateProvinceId), null).Return(stateProvince=>stateProvince.Name,"")),
+                    new PropertyByName<Order>("BillingCountry",p=>p.BillingAddress.Return(billingAddress=>_serviceProvider.GetRequiredService<ICountryService>().GetCountryById(billingAddress.CountryId).Result, null).Return(country=>country.Name,"")),
+                    new PropertyByName<Order>("BillingStateProvince",p=>p.BillingAddress.Return(billingAddress=>_serviceProvider.GetRequiredService<IStateProvinceService>().GetStateProvinceById(billingAddress.StateProvinceId).Result, null).Return(stateProvince=>stateProvince.Name,"")),
                     new PropertyByName<Order>("BillingCity", p=>p.BillingAddress.Return(billingAddress=>billingAddress.City,"")),
                     new PropertyByName<Order>("BillingAddress1",p=>p.BillingAddress.Return(billingAddress=>billingAddress.Address1,"")),
                     new PropertyByName<Order>("BillingAddress2", p=>p.BillingAddress.Return(billingAddress=>billingAddress.Address2,"")),
@@ -1244,8 +1253,8 @@ namespace Grand.Services.ExportImport
                     new PropertyByName<Order>("ShippingEmail", p=>p.ShippingAddress.Return(shippingAddress=>shippingAddress.Email, "")),
                     new PropertyByName<Order>("ShippingCompany", p=>p.ShippingAddress.Return(shippingAddress=>shippingAddress.Company, "")),
                     new PropertyByName<Order>("ShippingVatNumber", p=>p.ShippingAddress.Return(shippingAddress=>shippingAddress.VatNumber, "")),
-                    new PropertyByName<Order>("ShippingCountry", p=>p.ShippingAddress.Return(shippingAddress=>EngineContext.Current.Resolve<ICountryService>().GetCountryById(shippingAddress.CountryId), null).Return(country=>country.Name,"")),
-                    new PropertyByName<Order>("ShippingStateProvince", p=>p.ShippingAddress.Return(shippingAddress=>EngineContext.Current.Resolve<IStateProvinceService>().GetStateProvinceById(shippingAddress.StateProvinceId), null).Return(stateProvince=>stateProvince.Name,"")),
+                    new PropertyByName<Order>("ShippingCountry", p=>p.ShippingAddress.Return(shippingAddress=>_serviceProvider.GetRequiredService<ICountryService>().GetCountryById(shippingAddress.CountryId).Result, null).Return(country=>country.Name,"")),
+                    new PropertyByName<Order>("ShippingStateProvince", p=>p.ShippingAddress.Return(shippingAddress=>_serviceProvider.GetRequiredService<IStateProvinceService>().GetStateProvinceById(shippingAddress.StateProvinceId).Result, null).Return(stateProvince=>stateProvince.Name,"")),
                     new PropertyByName<Order>("ShippingCity", p=>p.ShippingAddress.Return(shippingAddress=>shippingAddress.City, "")),
                     new PropertyByName<Order>("ShippingAddress1", p=>p.ShippingAddress.Return(shippingAddress=>shippingAddress.Address1, "")),
                     new PropertyByName<Order>("ShippingAddress2", p=>p.ShippingAddress.Return(shippingAddress=>shippingAddress.Address2, "")),
@@ -1268,8 +1277,8 @@ namespace Grand.Services.ExportImport
                     new PropertyByName<Address>("Address1", p=>p.Address1),
                     new PropertyByName<Address>("Address2", p=>p.Address2),
                     new PropertyByName<Address>("City", p=>p.City),
-                    new PropertyByName<Address>("Country", p=> !string.IsNullOrEmpty(p.CountryId) ? EngineContext.Current.Resolve<ICountryService>().GetCountryById(p.CountryId)?.Name : ""),
-                    new PropertyByName<Address>("StateProvince", p=> !string.IsNullOrEmpty(p.StateProvinceId) ? EngineContext.Current.Resolve<IStateProvinceService>().GetStateProvinceById(p.StateProvinceId)?.Name : ""),
+                    new PropertyByName<Address>("Country", p=> !string.IsNullOrEmpty(p.CountryId) ? _serviceProvider.GetRequiredService<ICountryService>().GetCountryById(p.CountryId).Result?.Name : ""),
+                    new PropertyByName<Address>("StateProvince", p=> !string.IsNullOrEmpty(p.StateProvinceId) ? _serviceProvider.GetRequiredService<IStateProvinceService>().GetStateProvinceById(p.StateProvinceId).Result?.Name : ""),
             };
             return properties;
         }
@@ -1294,24 +1303,24 @@ namespace Grand.Services.ExportImport
                 new PropertyByName<Customer>("IsAdministrator", p => p.IsAdmin()),
                 new PropertyByName<Customer>("IsForumModerator", p => p.IsForumModerator()),
                 //attributes
-                new PropertyByName<Customer>("FirstName", p => p.GetAttribute<string>(SystemCustomerAttributeNames.FirstName)),
-                new PropertyByName<Customer>("LastName", p => p.GetAttribute<string>(SystemCustomerAttributeNames.LastName)),
-                new PropertyByName<Customer>("Gender", p => p.GetAttribute<string>(SystemCustomerAttributeNames.Gender)),
-                new PropertyByName<Customer>("Company", p => p.GetAttribute<string>(SystemCustomerAttributeNames.Company)),
-                new PropertyByName<Customer>("StreetAddress", p => p.GetAttribute<string>(SystemCustomerAttributeNames.StreetAddress)),
-                new PropertyByName<Customer>("StreetAddress2", p => p.GetAttribute<string>(SystemCustomerAttributeNames.StreetAddress2)),
-                new PropertyByName<Customer>("ZipPostalCode", p => p.GetAttribute<string>(SystemCustomerAttributeNames.ZipPostalCode)),
-                new PropertyByName<Customer>("City", p => p.GetAttribute<string>(SystemCustomerAttributeNames.City)),
-                new PropertyByName<Customer>("CountryId", p => p.GetAttribute<int>(SystemCustomerAttributeNames.CountryId)),
-                new PropertyByName<Customer>("StateProvinceId", p => p.GetAttribute<int>(SystemCustomerAttributeNames.StateProvinceId)),
-                new PropertyByName<Customer>("Phone", p => p.GetAttribute<string>(SystemCustomerAttributeNames.Phone)),
-                new PropertyByName<Customer>("Fax", p => p.GetAttribute<string>(SystemCustomerAttributeNames.Fax)),
-                new PropertyByName<Customer>("VatNumber", p => p.GetAttribute<string>(SystemCustomerAttributeNames.VatNumber)),
-                new PropertyByName<Customer>("VatNumberStatusId", p => p.GetAttribute<int>(SystemCustomerAttributeNames.VatNumberStatusId)),
-                new PropertyByName<Customer>("TimeZoneId", p => p.GetAttribute<string>(SystemCustomerAttributeNames.TimeZoneId)),
-                new PropertyByName<Customer>("AvatarPictureId", p => p.GetAttribute<string>(SystemCustomerAttributeNames.AvatarPictureId)),
-                new PropertyByName<Customer>("ForumPostCount", p => p.GetAttribute<int>(SystemCustomerAttributeNames.ForumPostCount)),
-                new PropertyByName<Customer>("Signature", p => p.GetAttribute<string>(SystemCustomerAttributeNames.Signature)),
+                new PropertyByName<Customer>("FirstName", p => p.GetAttributeFromEntity<string>(SystemCustomerAttributeNames.FirstName)),
+                new PropertyByName<Customer>("LastName", p => p.GetAttributeFromEntity<string>(SystemCustomerAttributeNames.LastName)),
+                new PropertyByName<Customer>("Gender", p => p.GetAttributeFromEntity<string>(SystemCustomerAttributeNames.Gender)),
+                new PropertyByName<Customer>("Company", p => p.GetAttributeFromEntity<string>(SystemCustomerAttributeNames.Company)),
+                new PropertyByName<Customer>("StreetAddress", p => p.GetAttributeFromEntity<string>(SystemCustomerAttributeNames.StreetAddress)),
+                new PropertyByName<Customer>("StreetAddress2", p => p.GetAttributeFromEntity<string>(SystemCustomerAttributeNames.StreetAddress2)),
+                new PropertyByName<Customer>("ZipPostalCode", p => p.GetAttributeFromEntity<string>(SystemCustomerAttributeNames.ZipPostalCode)),
+                new PropertyByName<Customer>("City", p => p.GetAttributeFromEntity<string>(SystemCustomerAttributeNames.City)),
+                new PropertyByName<Customer>("CountryId", p => p.GetAttributeFromEntity<string>(SystemCustomerAttributeNames.CountryId)),
+                new PropertyByName<Customer>("StateProvinceId", p => p.GetAttributeFromEntity<string>(SystemCustomerAttributeNames.StateProvinceId)),
+                new PropertyByName<Customer>("Phone", p => p.GetAttributeFromEntity<string>(SystemCustomerAttributeNames.Phone)),
+                new PropertyByName<Customer>("Fax", p => p.GetAttributeFromEntity<string>(SystemCustomerAttributeNames.Fax)),
+                new PropertyByName<Customer>("VatNumber", p => p.GetAttributeFromEntity<string>(SystemCustomerAttributeNames.VatNumber)),
+                new PropertyByName<Customer>("VatNumberStatusId", p => p.GetAttributeFromEntity<int>(SystemCustomerAttributeNames.VatNumberStatusId)),
+                new PropertyByName<Customer>("TimeZoneId", p => p.GetAttributeFromEntity<string>(SystemCustomerAttributeNames.TimeZoneId)),
+                new PropertyByName<Customer>("AvatarPictureId", p => p.GetAttributeFromEntity<string>(SystemCustomerAttributeNames.AvatarPictureId)),
+                new PropertyByName<Customer>("ForumPostCount", p => p.GetAttributeFromEntity<int>(SystemCustomerAttributeNames.ForumPostCount)),
+                new PropertyByName<Customer>("Signature", p => p.GetAttributeFromEntity<string>(SystemCustomerAttributeNames.Signature)),
             };
             return properties;
         }
@@ -1356,14 +1365,14 @@ namespace Grand.Services.ExportImport
 
         private PropertyByName<NewsLetterSubscription>[] PropertyByNewsLetterSubscription()
         {
-            var newsletterCategoryService = EngineContext.Current.Resolve<INewsletterCategoryService>();
+            var newsletterCategoryService = _serviceProvider.GetRequiredService<INewsletterCategoryService>();
 
             string GetCategoryNames(IList<string> categoryNames, string separator = ",")
             {
                 var sb = new StringBuilder();
                 for (int i = 0; i < categoryNames.Count; i++)
                 {
-                    var category = newsletterCategoryService.GetNewsletterCategoryById(categoryNames[i]);
+                    var category = newsletterCategoryService.GetNewsletterCategoryById(categoryNames[i]).Result;
                     if (category != null)
                     {
                         sb.Append(category.Name);
@@ -1403,21 +1412,21 @@ namespace Grand.Services.ExportImport
             helper.ObjectList.Add(new PropertyHelperList<Customer>("IsAdministrator", p => p.IsAdmin()));
             helper.ObjectList.Add(new PropertyHelperList<Customer>("IsForumModerator", p => p.IsForumModerator()));
             //attributes
-            helper.ObjectList.Add(new PropertyHelperList<Customer>("FirstName", p => p.GetAttribute<string>(SystemCustomerAttributeNames.FirstName)));
-            helper.ObjectList.Add(new PropertyHelperList<Customer>("LastName", p => p.GetAttribute<string>(SystemCustomerAttributeNames.LastName)));
-            helper.ObjectList.Add(new PropertyHelperList<Customer>("Gender", p => p.GetAttribute<string>(SystemCustomerAttributeNames.Gender)));
-            helper.ObjectList.Add(new PropertyHelperList<Customer>("Company", p => p.GetAttribute<string>(SystemCustomerAttributeNames.Company)));
-            helper.ObjectList.Add(new PropertyHelperList<Customer>("StreetAddress", p => p.GetAttribute<string>(SystemCustomerAttributeNames.StreetAddress)));
-            helper.ObjectList.Add(new PropertyHelperList<Customer>("StreetAddress2", p => p.GetAttribute<string>(SystemCustomerAttributeNames.StreetAddress2)));
-            helper.ObjectList.Add(new PropertyHelperList<Customer>("ZipPostalCode", p => p.GetAttribute<string>(SystemCustomerAttributeNames.ZipPostalCode)));
-            helper.ObjectList.Add(new PropertyHelperList<Customer>("City", p => p.GetAttribute<string>(SystemCustomerAttributeNames.City)));
+            helper.ObjectList.Add(new PropertyHelperList<Customer>("FirstName", p => p.GetAttributeFromEntity<string>(SystemCustomerAttributeNames.FirstName)));
+            helper.ObjectList.Add(new PropertyHelperList<Customer>("LastName", p => p.GetAttributeFromEntity<string>(SystemCustomerAttributeNames.LastName)));
+            helper.ObjectList.Add(new PropertyHelperList<Customer>("Gender", p => p.GetAttributeFromEntity<string>(SystemCustomerAttributeNames.Gender)));
+            helper.ObjectList.Add(new PropertyHelperList<Customer>("Company", p => p.GetAttributeFromEntity<string>(SystemCustomerAttributeNames.Company)));
+            helper.ObjectList.Add(new PropertyHelperList<Customer>("StreetAddress", p => p.GetAttributeFromEntity<string>(SystemCustomerAttributeNames.StreetAddress)));
+            helper.ObjectList.Add(new PropertyHelperList<Customer>("StreetAddress2", p => p.GetAttributeFromEntity<string>(SystemCustomerAttributeNames.StreetAddress2)));
+            helper.ObjectList.Add(new PropertyHelperList<Customer>("ZipPostalCode", p => p.GetAttributeFromEntity<string>(SystemCustomerAttributeNames.ZipPostalCode)));
+            helper.ObjectList.Add(new PropertyHelperList<Customer>("City", p => p.GetAttributeFromEntity<string>(SystemCustomerAttributeNames.City)));
             helper.ObjectList.Add(new PropertyHelperList<Customer>("Country",
                 p =>
                 {
-                    var countryid = p.GetAttribute<string>(SystemCustomerAttributeNames.CountryId);
+                    var countryid = p.GetAttributeFromEntity<string>(SystemCustomerAttributeNames.CountryId);
                     var countryName = "";
                     if (!string.IsNullOrEmpty(countryid))
-                        countryName = EngineContext.Current.Resolve<ICountryService>().GetCountryById(countryid)?.Name;
+                        countryName = _serviceProvider.GetRequiredService<ICountryService>().GetCountryById(countryid).Result?.Name;
                     return countryName;
                 }
                 ));
@@ -1425,19 +1434,19 @@ namespace Grand.Services.ExportImport
             helper.ObjectList.Add(new PropertyHelperList<Customer>("StateProvince",
                 p =>
                 {
-                    var stateId = p.GetAttribute<string>(SystemCustomerAttributeNames.StateProvinceId);
+                    var stateId = p.GetAttributeFromEntity<string>(SystemCustomerAttributeNames.StateProvinceId);
                     var stateName = "";
                     if (!string.IsNullOrEmpty(stateId))
-                        stateName = EngineContext.Current.Resolve<IStateProvinceService>().GetStateProvinceById(stateId)?.Name;
+                        stateName = _serviceProvider.GetRequiredService<IStateProvinceService>().GetStateProvinceById(stateId).Result?.Name;
                     return stateName;
                 }
                 ));
 
-            helper.ObjectList.Add(new PropertyHelperList<Customer>("Phone", p => p.GetAttribute<string>(SystemCustomerAttributeNames.Phone)));
-            helper.ObjectList.Add(new PropertyHelperList<Customer>("Fax", p => p.GetAttribute<string>(SystemCustomerAttributeNames.Fax)));
-            helper.ObjectList.Add(new PropertyHelperList<Customer>("VatNumber", p => p.GetAttribute<string>(SystemCustomerAttributeNames.VatNumber)));
-            helper.ObjectList.Add(new PropertyHelperList<Customer>("ForumPostCount", p => p.GetAttribute<int>(SystemCustomerAttributeNames.ForumPostCount)));
-            helper.ObjectList.Add(new PropertyHelperList<Customer>("Signature", p => p.GetAttribute<string>(SystemCustomerAttributeNames.Signature)));
+            helper.ObjectList.Add(new PropertyHelperList<Customer>("Phone", p => p.GetAttributeFromEntity<string>(SystemCustomerAttributeNames.Phone)));
+            helper.ObjectList.Add(new PropertyHelperList<Customer>("Fax", p => p.GetAttributeFromEntity<string>(SystemCustomerAttributeNames.Fax)));
+            helper.ObjectList.Add(new PropertyHelperList<Customer>("VatNumber", p => p.GetAttributeFromEntity<string>(SystemCustomerAttributeNames.VatNumber)));
+            helper.ObjectList.Add(new PropertyHelperList<Customer>("ForumPostCount", p => p.GetAttributeFromEntity<int>(SystemCustomerAttributeNames.ForumPostCount)));
+            helper.ObjectList.Add(new PropertyHelperList<Customer>("Signature", p => p.GetAttributeFromEntity<string>(SystemCustomerAttributeNames.Signature)));
 
             return helper;
         }

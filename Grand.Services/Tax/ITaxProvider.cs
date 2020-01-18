@@ -1,5 +1,5 @@
 using Grand.Core.Plugins;
-using Microsoft.AspNetCore.Routing;
+using System.Threading.Tasks;
 
 namespace Grand.Services.Tax
 {
@@ -13,7 +13,7 @@ namespace Grand.Services.Tax
         /// </summary>
         /// <param name="calculateTaxRequest">Tax calculation request</param>
         /// <returns>Tax</returns>
-        CalculateTaxResult GetTaxRate(CalculateTaxRequest calculateTaxRequest);
+        Task<CalculateTaxResult> GetTaxRate(CalculateTaxRequest calculateTaxRequest);
 
     }
 }

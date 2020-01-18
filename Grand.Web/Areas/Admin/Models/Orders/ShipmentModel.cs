@@ -1,10 +1,7 @@
-﻿using Grand.Framework.Mvc.Models;
-using Microsoft.AspNetCore.Mvc.Rendering;
-using Grand.Framework.Mvc.ModelBinding;
+﻿using Grand.Framework.Mvc.ModelBinding;
+using Grand.Framework.Mvc.Models;
 using System;
 using System.Collections.Generic;
-using Grand.Framework;
-using Grand.Framework.Mvc;
 
 namespace Grand.Web.Areas.Admin.Models.Orders
 {
@@ -29,12 +26,12 @@ namespace Grand.Web.Areas.Admin.Models.Orders
         public string TrackingNumberUrl { get; set; }
 
         [GrandResourceDisplayName("Admin.Orders.Shipments.ShippedDate")]
-        public string ShippedDate { get; set; }
+        public DateTime? ShippedDate { get; set; }
         public bool CanShip { get; set; }
         public DateTime? ShippedDateUtc { get; set; }
 
         [GrandResourceDisplayName("Admin.Orders.Shipments.DeliveryDate")]
-        public string DeliveryDate { get; set; }
+        public DateTime? DeliveryDate { get; set; }
         public bool CanDeliver { get; set; }
         public DateTime? DeliveryDateUtc { get; set; }
 

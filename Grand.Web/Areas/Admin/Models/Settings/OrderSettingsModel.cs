@@ -1,9 +1,9 @@
-﻿using Grand.Framework.Mvc.Models;
-using Microsoft.AspNetCore.Mvc.Rendering;
+﻿using FluentValidation.Attributes;
 using Grand.Framework.Mvc.ModelBinding;
-using System.Collections.Generic;
-using FluentValidation.Attributes;
+using Grand.Framework.Mvc.Models;
 using Grand.Web.Areas.Admin.Validators.Settings;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using System.Collections.Generic;
 
 namespace Grand.Web.Areas.Admin.Models.Settings
 {
@@ -13,7 +13,6 @@ namespace Grand.Web.Areas.Admin.Models.Settings
         public OrderSettingsModel()
         {
             GiftCards_Activated_OrderStatuses = new List<SelectListItem>();
-            GiftCards_Deactivated_OrderStatuses = new List<SelectListItem>();
         }
 
         public string ActiveStoreScopeConfiguration { get; set; }
@@ -98,9 +97,8 @@ namespace Grand.Web.Areas.Admin.Models.Settings
         public int GiftCards_Activated_OrderStatusId { get; set; }
         public IList<SelectListItem> GiftCards_Activated_OrderStatuses { get; set; }
 
-        [GrandResourceDisplayName("Admin.Configuration.Settings.Order.GiftCards_Deactivated")]
-        public int GiftCards_Deactivated_OrderStatusId { get; set; }
-        public IList<SelectListItem> GiftCards_Deactivated_OrderStatuses { get; set; }
+        [GrandResourceDisplayName("Admin.Configuration.Settings.Order.DeactivateGiftCardsAfterCancelOrder")]
+        public bool DeactivateGiftCardsAfterCancelOrder { get; set; }
 
         [GrandResourceDisplayName("Admin.Configuration.Settings.Order.DeactivateGiftCardsAfterDeletingOrder")]
         public bool DeactivateGiftCardsAfterDeletingOrder { get; set; }
@@ -116,5 +114,9 @@ namespace Grand.Web.Areas.Admin.Models.Settings
         [GrandResourceDisplayName("Admin.Configuration.Settings.Order.UserCanCancelUnpaidOrder")]
         public bool UserCanCancelUnpaidOrder { get; set; }
         public bool UserCanCancelUnpaidOrder_OverrideForStore { get; set; }
+
+        [GrandResourceDisplayName("Admin.Configuration.Settings.Order.AllowCustomerToAddOrderNote")]
+        public bool AllowCustomerToAddOrderNote { get; set; }
+        public bool AllowCustomerToAddOrderNote_OverrideForStore { get; set; }
     }
 }

@@ -1,21 +1,16 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using System;
-using Grand.Web.Models.Profile;
-using Grand.Services.Forums;
+﻿using Grand.Core.Domain.Forums;
+using Grand.Framework.Components;
 using Grand.Services.Customers;
-using Grand.Services.Logging;
-using Grand.Services.Localization;
-using Grand.Core;
+using Grand.Services.Forums;
 using Grand.Services.Helpers;
-using Grand.Core.Domain.Forums;
-using Grand.Core.Domain.Customers;
-using Grand.Services.Media;
-using Grand.Core.Domain.Media;
-using Grand.Services.Directory;
-using System.Collections.Generic;
+using Grand.Services.Localization;
 using Grand.Services.Seo;
 using Grand.Web.Models.Common;
-using Grand.Framework.Components;
+using Grand.Web.Models.Profile;
+using Microsoft.AspNetCore.Mvc;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace Grand.Web.ViewComponents
 {
@@ -24,22 +19,25 @@ namespace Grand.Web.ViewComponents
         private readonly IForumService _forumService;
         private readonly ICustomerService _customerService;
         private readonly IDateTimeHelper _dateTimeHelper;
+        private readonly ILocalizationService _localizationService;
         private readonly ForumSettings _forumSettings;
 
         public ProfilePostsViewComponent(IForumService forumService,
             ICustomerService customerService, 
             IDateTimeHelper dateTimeHelper,
+            ILocalizationService localizationService,
             ForumSettings forumSettings)
         {
-            this._forumService = forumService;
-            this._customerService = customerService;
-            this._dateTimeHelper = dateTimeHelper;
-            this._forumSettings = forumSettings;
+            _forumService = forumService;
+            _customerService = customerService;
+            _dateTimeHelper = dateTimeHelper;
+            _localizationService = localizationService;
+            _forumSettings = forumSettings;
         }
 
-        public IViewComponentResult Invoke(string customerProfileId, int pageNumber)
+        public async Task<IViewComponentResult> InvokeAsync(string customerProfileId, int pageNumber)
         {
-            var customer = _customerService.GetCustomerById(customerProfileId);
+            var customer = await _customerService.GetCustomerById(customerProfileId);
             if (customer == null)
             {
                 return Content("");
@@ -52,7 +50,7 @@ namespace Grand.Web.ViewComponents
 
             var pageSize = _forumSettings.LatestCustomerPostsPageSize;
 
-            var list = _forumService.GetAllPosts("", customer.Id, string.Empty, false, pageNumber, pageSize);
+            var list = await _forumService.GetAllPosts("", customer.Id, string.Empty, false, pageNumber, pageSize);
 
             var latestPosts = new List<PostsModel>();
 
@@ -67,7 +65,7 @@ namespace Grand.Web.ViewComponents
                 {
                     posted = _dateTimeHelper.ConvertToUserTime(forumPost.CreatedOnUtc, DateTimeKind.Utc).ToString("f");
                 }
-                var forumtopic = _forumService.GetTopicById(forumPost.TopicId);
+                var forumtopic = await _forumService.GetTopicById(forumPost.TopicId);
                 latestPosts.Add(new PostsModel
                 {
                     ForumTopicId = forumPost.TopicId,
@@ -78,7 +76,7 @@ namespace Grand.Web.ViewComponents
                 });
             }
 
-            var pagerModel = new PagerModel
+            var pagerModel = new PagerModel(_localizationService)
             {
                 PageSize = list.PageSize,
                 TotalRecords = list.TotalCount,

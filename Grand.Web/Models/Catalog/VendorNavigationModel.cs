@@ -1,6 +1,5 @@
-﻿using System.Collections.Generic;
-using Grand.Framework.Mvc;
-using Grand.Framework.Mvc.Models;
+﻿using Grand.Framework.Mvc.Models;
+using System.Collections.Generic;
 
 namespace Grand.Web.Models.Catalog
 {
@@ -8,7 +7,7 @@ namespace Grand.Web.Models.Catalog
     {
         public VendorNavigationModel()
         {
-            this.Vendors = new List<VendorBriefInfoModel>();
+            Vendors = new List<VendorBriefInfoModel>();
         }
 
         public IList<VendorBriefInfoModel> Vendors { get; set; }

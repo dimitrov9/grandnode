@@ -1,8 +1,9 @@
-﻿using System;
-using Microsoft.AspNetCore.Mvc;
-using Grand.Services.Messages;
-using Grand.Web.Services;
+﻿using Grand.Services.Messages;
+using Grand.Web.Interfaces;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using System;
+using System.Threading.Tasks;
 
 namespace Grand.Web.Controllers
 {
@@ -12,22 +13,21 @@ namespace Grand.Web.Controllers
         private readonly INewsLetterSubscriptionService _newsLetterSubscriptionService;
 
         public NewsletterController(INewsletterViewModelService newsletterViewModelService,
-            INewsLetterSubscriptionService newsLetterSubscriptionService,
-            INewsletterCategoryService newsletterCategoryService)
+            INewsLetterSubscriptionService newsLetterSubscriptionService)
         {
-            this._newsletterViewModelService = newsletterViewModelService;
-            this._newsLetterSubscriptionService = newsLetterSubscriptionService;
+            _newsletterViewModelService = newsletterViewModelService;
+            _newsLetterSubscriptionService = newsLetterSubscriptionService;
         }
        
 
         [HttpPost]
-        public virtual IActionResult SubscribeNewsletter(string email, bool subscribe)
+        public virtual async Task<IActionResult> SubscribeNewsletter(string email, bool subscribe)
         {
-            var model = _newsletterViewModelService.SubscribeNewsletter(email, subscribe);
+            var model = await _newsletterViewModelService.SubscribeNewsletter(email, subscribe);
             if(model.NewsletterCategory!=null)
             {
                 model.ShowCategories = true;
-                model.ResultCategory = this.RenderPartialViewToString("NewsletterCategory", model.NewsletterCategory);
+                model.ResultCategory = await RenderPartialViewToString("NewsletterCategory", model.NewsletterCategory);
             }
             return Json(new
             {
@@ -39,7 +39,7 @@ namespace Grand.Web.Controllers
         }
 
         [HttpPost]
-        public virtual IActionResult SaveCategories(IFormCollection form)
+        public virtual async Task<IActionResult> SaveCategories(IFormCollection form)
         {
 
             bool success = false;
@@ -48,7 +48,7 @@ namespace Grand.Web.Controllers
             var newsletterEmailId = form["NewsletterEmailId"].ToString();
             if (!string.IsNullOrEmpty(newsletterEmailId))
             {
-                var subscription = _newsLetterSubscriptionService.GetNewsLetterSubscriptionById(newsletterEmailId);
+                var subscription = await _newsLetterSubscriptionService.GetNewsLetterSubscriptionById(newsletterEmailId);
                 if(subscription!=null)
                 {
                     foreach (string formKey in form.Keys)
@@ -67,7 +67,7 @@ namespace Grand.Web.Controllers
                         }
                     }
                     success = true;
-                    _newsLetterSubscriptionService.UpdateNewsLetterSubscription(subscription, false);
+                    await _newsLetterSubscriptionService.UpdateNewsLetterSubscription(subscription, false);
                 }
                 else
                 {
@@ -85,13 +85,13 @@ namespace Grand.Web.Controllers
         }
 
 
-        public virtual IActionResult SubscriptionActivation(Guid token, bool active)
+        public virtual async Task<IActionResult> SubscriptionActivation(Guid token, bool active)
         {
-            var subscription = _newsLetterSubscriptionService.GetNewsLetterSubscriptionByGuid(token);
+            var subscription = await _newsLetterSubscriptionService.GetNewsLetterSubscriptionByGuid(token);
             if (subscription == null)
                 return RedirectToRoute("HomePage");
 
-            var model = _newsletterViewModelService.PrepareSubscriptionActivation(subscription, active);
+            var model = await _newsletterViewModelService.PrepareSubscriptionActivation(subscription, active);
 
             return View(model);
         }

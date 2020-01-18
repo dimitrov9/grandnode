@@ -1,18 +1,19 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
 using Autofac;
-using Autofac.Builder;
-using Autofac.Core;
+using FluentValidation;
 using Grand.Core;
 using Grand.Core.Caching;
 using Grand.Core.Configuration;
 using Grand.Core.Data;
+using Grand.Core.Http;
 using Grand.Core.Infrastructure;
 using Grand.Core.Infrastructure.DependencyManagement;
 using Grand.Core.Plugins;
-using Grand.Data;
+using Grand.Framework.Middleware;
+using Grand.Framework.Mvc.Routing;
+using Grand.Framework.TagHelpers;
+using Grand.Framework.Themes;
+using Grand.Framework.UI;
+using Grand.Framework.Validators;
 using Grand.Services.Affiliates;
 using Grand.Services.Authentication;
 using Grand.Services.Authentication.External;
@@ -21,15 +22,17 @@ using Grand.Services.Catalog;
 using Grand.Services.Cms;
 using Grand.Services.Common;
 using Grand.Services.Configuration;
+using Grand.Services.Courses;
 using Grand.Services.Customers;
 using Grand.Services.Directory;
 using Grand.Services.Discounts;
-using Grand.Services.Events;
+using Grand.Services.Documents;
 using Grand.Services.ExportImport;
 using Grand.Services.Forums;
 using Grand.Services.Helpers;
 using Grand.Services.Infrastructure;
 using Grand.Services.Installation;
+using Grand.Services.Knowledgebase;
 using Grand.Services.Localization;
 using Grand.Services.Logging;
 using Grand.Services.Media;
@@ -38,6 +41,7 @@ using Grand.Services.News;
 using Grand.Services.Orders;
 using Grand.Services.Payments;
 using Grand.Services.Polls;
+using Grand.Services.PushNotifications;
 using Grand.Services.Security;
 using Grand.Services.Seo;
 using Grand.Services.Shipping;
@@ -46,14 +50,11 @@ using Grand.Services.Tasks;
 using Grand.Services.Tax;
 using Grand.Services.Topics;
 using Grand.Services.Vendors;
-using Grand.Framework.Mvc.Routing;
-using Grand.Framework.Themes;
-using Grand.Framework.UI;
+using Microsoft.AspNetCore.StaticFiles;
 using MongoDB.Driver;
-using Grand.Core.Http;
-using Grand.Services.Knowledgebase;
-using Grand.Services.PushNotifications;
-using Grand.Services;
+using System;
+using System.Linq;
+using System.Reflection;
 
 namespace Grand.Framework.Infrastructure
 {
@@ -69,12 +70,11 @@ namespace Grand.Framework.Infrastructure
         /// <param name="typeFinder">Type finder</param>
         /// <param name="config">Config</param>
         public virtual void Register(ContainerBuilder builder, ITypeFinder typeFinder, GrandConfig config)
-        {            
+        {
 
             //web helper
             builder.RegisterType<WebHelper>().As<IWebHelper>().InstancePerLifetimeScope();
-            //user agent helper
-            builder.RegisterType<UserAgentHelper>().As<IUserAgentHelper>().InstancePerLifetimeScope();
+
             //powered by
             builder.RegisterType<PoweredByMiddlewareOptions>().As<IPoweredByMiddlewareOptions>().SingleInstance();
 
@@ -105,17 +105,11 @@ namespace Grand.Framework.Infrastructure
 
             //cache manager
             builder.RegisterType<PerRequestCacheManager>().InstancePerLifetimeScope();
+            builder.RegisterType<MemoryCacheManager>().As<ICacheManager>().SingleInstance();
 
-            //cache manager
             if (config.RedisCachingEnabled)
             {
-                builder.RegisterType<MemoryCacheManager>().As<ICacheManager>().Named<ICacheManager>("grand_cache_static").SingleInstance();
-                builder.RegisterType<RedisConnectionWrapper>().As<IRedisConnectionWrapper>().SingleInstance();
-                builder.RegisterType<RedisCacheManager>().As<ICacheManager>().InstancePerLifetimeScope();
-            }
-            else
-            {
-                builder.RegisterType<MemoryCacheManager>().As<ICacheManager>().Named<ICacheManager>("grand_cache_static").SingleInstance();
+                builder.Register(r => new DistributedRedisCache(config.RedisCachingConnectionString)).As<ICacheManager>().SingleInstance();
             }
 
             if (config.RunOnAzureWebApps)
@@ -130,6 +124,9 @@ namespace Grand.Framework.Infrastructure
             builder.RegisterType<WebWorkContext>().As<IWorkContext>().InstancePerLifetimeScope();
             //store context
             builder.RegisterType<WebStoreContext>().As<IStoreContext>().InstancePerLifetimeScope();
+
+            builder.RegisterType<SettingService>().As<ISettingService>().InstancePerLifetimeScope();
+            builder.RegisterType<LocalizationService>().As<ILocalizationService>().InstancePerLifetimeScope();
 
             //services
             builder.RegisterType<BackInStockSubscriptionService>().As<IBackInStockSubscriptionService>().InstancePerLifetimeScope();
@@ -146,6 +143,7 @@ namespace Grand.Framework.Infrastructure
             builder.RegisterType<CopyProductService>().As<ICopyProductService>().InstancePerLifetimeScope();
             builder.RegisterType<ProductReservationService>().As<IProductReservationService>().InstancePerLifetimeScope();
             builder.RegisterType<AuctionService>().As<IAuctionService>().InstancePerLifetimeScope();
+            builder.RegisterType<ProductCourseService>().As<IProductCourseService>().InstancePerLifetimeScope();
 
             builder.RegisterType<SpecificationAttributeService>().As<ISpecificationAttributeService>().InstancePerLifetimeScope();
 
@@ -172,6 +170,7 @@ namespace Grand.Framework.Infrastructure
             builder.RegisterType<CustomerActionService>().As<ICustomerActionService>().InstancePerLifetimeScope();
             builder.RegisterType<CustomerActionEventService>().As<ICustomerActionEventService>().InstancePerLifetimeScope();
             builder.RegisterType<CustomerReminderService>().As<ICustomerReminderService>().InstancePerLifetimeScope();
+            builder.RegisterType<UserApiService>().As<IUserApiService>().InstancePerLifetimeScope();
 
             builder.RegisterType<RewardPointsService>().As<IRewardPointsService>().InstancePerLifetimeScope();
 
@@ -190,26 +189,14 @@ namespace Grand.Framework.Infrastructure
             builder.RegisterType<StoreMappingService>().As<IStoreMappingService>().InstancePerLifetimeScope();
             builder.RegisterType<DiscountService>().As<IDiscountService>().InstancePerLifetimeScope();
 
-            if (config.RedisCachingEnabled)
-            {
-                builder.RegisterType<SettingService>().As<ISettingService>()
-                    .WithParameter(ResolvedParameter.ForNamed<ICacheManager>("grand_cache_static"))
-                    .InstancePerLifetimeScope();
-
-                builder.RegisterType<LocalizationService>().As<ILocalizationService>()
-                    .WithParameter(ResolvedParameter.ForNamed<ICacheManager>("grand_cache_static"))
-                    .InstancePerLifetimeScope();
-            }
-            else
-            {
-                builder.RegisterType<SettingService>().As<ISettingService>().InstancePerLifetimeScope();
-                builder.RegisterType<LocalizationService>().As<ILocalizationService>().InstancePerLifetimeScope();
-            }
-
-            builder.RegisterSource(new SettingsSource());
 
             builder.RegisterType<LanguageService>().As<ILanguageService>().InstancePerLifetimeScope();
             builder.RegisterType<DownloadService>().As<IDownloadService>().InstancePerLifetimeScope();
+
+            var provider = new FileExtensionContentTypeProvider();
+            builder.RegisterType<MimeMappingService>().As<IMimeMappingService>()
+                .WithParameter(new TypedParameter(typeof(FileExtensionContentTypeProvider), provider))
+                .InstancePerLifetimeScope();
 
             //picture service
             var useAzureBlobStorage = !String.IsNullOrEmpty(config.AzureBlobStorageConnectionString);
@@ -262,6 +249,7 @@ namespace Grand.Framework.Infrastructure
             builder.RegisterType<PaymentService>().As<IPaymentService>().InstancePerLifetimeScope();
             builder.RegisterType<EncryptionService>().As<IEncryptionService>().InstancePerLifetimeScope();
             builder.RegisterType<CookieAuthenticationService>().As<IGrandAuthenticationService>().InstancePerLifetimeScope();
+            builder.RegisterType<ApiAuthenticationService>().As<IApiAuthenticationService>().InstancePerLifetimeScope();
             builder.RegisterType<UrlRecordService>().As<IUrlRecordService>().InstancePerLifetimeScope();
             builder.RegisterType<ShipmentService>().As<IShipmentService>().InstancePerLifetimeScope();
             builder.RegisterType<ShippingService>().As<IShippingService>().InstancePerLifetimeScope();
@@ -303,82 +291,61 @@ namespace Grand.Framework.Infrastructure
             builder.RegisterType<ThemeContext>().As<IThemeContext>().InstancePerLifetimeScope();
             builder.RegisterType<ExternalAuthenticationService>().As<IExternalAuthenticationService>().InstancePerLifetimeScope();
             builder.RegisterType<GoogleAnalyticsService>().As<IGoogleAnalyticsService>().InstancePerLifetimeScope();
+            builder.RegisterType<DocumentTypeService>().As<IDocumentTypeService>().InstancePerLifetimeScope();
+            builder.RegisterType<DocumentService>().As<IDocumentService>().InstancePerLifetimeScope();
+
+            builder.RegisterType<CourseActionService>().As<ICourseActionService>().InstancePerLifetimeScope();
+            builder.RegisterType<CourseLessonService>().As<ICourseLessonService>().InstancePerLifetimeScope();
+            builder.RegisterType<CourseLevelService>().As<ICourseLevelService>().InstancePerLifetimeScope();
+            builder.RegisterType<CourseService>().As<ICourseService>().InstancePerLifetimeScope();
+            builder.RegisterType<CourseSubjectService>().As<ICourseSubjectService>().InstancePerLifetimeScope();
 
             builder.RegisterType<RoutePublisher>().As<IRoutePublisher>().SingleInstance();
 
-            //Register event consumers
-            var consumers = typeFinder.FindClassesOfType(typeof(IConsumer<>)).ToList();
-            foreach (var consumer in consumers)
+            var validators = typeFinder.FindClassesOfType(typeof(IValidator)).ToList();
+            foreach (var validator in validators)
+            {
+                builder.RegisterType(validator);
+            }
+
+            //validator consumers
+            var validatorconsumers = typeFinder.FindClassesOfType(typeof(IValidatorConsumer<>)).ToList();
+            foreach (var consumer in validatorconsumers)
             {
                 builder.RegisterType(consumer)
                     .As(consumer.GetTypeInfo().FindInterfaces((type, criteria) =>
                     {
                         var isMatch = type.GetTypeInfo().IsGenericType && ((Type)criteria).IsAssignableFrom(type.GetGenericTypeDefinition());
                         return isMatch;
-                    }, typeof(IConsumer<>)))
+                    }, typeof(IValidatorConsumer<>)))
                     .InstancePerLifetimeScope();
             }
 
-            builder.RegisterType<EventPublisher>().As<IEventPublisher>().SingleInstance();
-            builder.RegisterType<SubscriptionService>().As<ISubscriptionService>().SingleInstance();
+            builder.RegisterType<ResourceManager>().As<IResourceManager>().InstancePerLifetimeScope();
 
-            //TASKS
-            builder.RegisterType<QueuedMessagesSendScheduleTask>().InstancePerLifetimeScope();
-            builder.RegisterType<ClearCacheScheduleTask>().InstancePerLifetimeScope();
-            builder.RegisterType<ClearLogScheduleTask>().InstancePerLifetimeScope();
-            builder.RegisterType<CustomerReminderAbandonedCartScheduleTask>().InstancePerLifetimeScope();
-            builder.RegisterType<CustomerReminderBirthdayScheduleTask>().InstancePerLifetimeScope();
-            builder.RegisterType<CustomerReminderCompletedOrderScheduleTask>().InstancePerLifetimeScope();
-            builder.RegisterType<CustomerReminderLastActivityScheduleTask>().InstancePerLifetimeScope();
-            builder.RegisterType<CustomerReminderLastPurchaseScheduleTask>().InstancePerLifetimeScope();
-            builder.RegisterType<CustomerReminderRegisteredCustomerScheduleTask>().InstancePerLifetimeScope();
-            builder.RegisterType<CustomerReminderUnpaidOrderScheduleTask>().InstancePerLifetimeScope();
-            builder.RegisterType<DeleteGuestsScheduleTask>().InstancePerLifetimeScope();
-            builder.RegisterType<UpdateExchangeRateScheduleTask>().InstancePerLifetimeScope();
-            builder.RegisterType<EndAuctionsTask>().InstancePerLifetimeScope();
+            //Register task
+            builder.RegisterType<QueuedMessagesSendScheduleTask>().As<IScheduleTask>().InstancePerLifetimeScope();
+            builder.RegisterType<ClearCacheScheduleTask>().As<IScheduleTask>().InstancePerLifetimeScope();
+            builder.RegisterType<ClearLogScheduleTask>().As<IScheduleTask>().InstancePerLifetimeScope();
+            builder.RegisterType<CustomerReminderAbandonedCartScheduleTask>().As<IScheduleTask>().InstancePerLifetimeScope();
+            builder.RegisterType<CustomerReminderBirthdayScheduleTask>().As<IScheduleTask>().InstancePerLifetimeScope();
+            builder.RegisterType<CustomerReminderCompletedOrderScheduleTask>().As<IScheduleTask>().InstancePerLifetimeScope();
+            builder.RegisterType<CustomerReminderLastActivityScheduleTask>().As<IScheduleTask>().InstancePerLifetimeScope();
+            builder.RegisterType<CustomerReminderLastPurchaseScheduleTask>().As<IScheduleTask>().InstancePerLifetimeScope();
+            builder.RegisterType<CustomerReminderRegisteredCustomerScheduleTask>().As<IScheduleTask>().InstancePerLifetimeScope();
+            builder.RegisterType<CustomerReminderUnpaidOrderScheduleTask>().As<IScheduleTask>().InstancePerLifetimeScope();
+            builder.RegisterType<DeleteGuestsScheduleTask>().As<IScheduleTask>().InstancePerLifetimeScope();
+            builder.RegisterType<UpdateExchangeRateScheduleTask>().As<IScheduleTask>().InstancePerLifetimeScope();
+            builder.RegisterType<EndAuctionsTask>().As<IScheduleTask>().InstancePerLifetimeScope();
+
         }
 
         /// <summary>
         /// Gets order of this dependency registrar implementation
         /// </summary>
-        public int Order
-        {
+        public int Order {
             get { return 0; }
         }
-    }
-
-
-    public class SettingsSource : IRegistrationSource
-    {
-        static readonly MethodInfo BuildMethod = typeof(SettingsSource).GetMethod(
-            "BuildRegistration",
-            BindingFlags.Static | BindingFlags.NonPublic);
-
-        public IEnumerable<IComponentRegistration> RegistrationsFor(
-            Autofac.Core.Service service,
-            Func<Autofac.Core.Service, IEnumerable<IComponentRegistration>> registrations)
-        {
-            var ts = service as TypedService;
-            if (ts != null && typeof(ISettings).IsAssignableFrom(ts.ServiceType))
-            {
-                var buildMethod = BuildMethod.MakeGenericMethod(ts.ServiceType);
-                yield return (IComponentRegistration)buildMethod.Invoke(null, null);
-            }
-        }
-
-        static IComponentRegistration BuildRegistration<TSettings>() where TSettings : ISettings, new()
-        {
-            return RegistrationBuilder
-                .ForDelegate((c, p) =>
-                {
-                    var currentStoreId = c.Resolve<IStoreContext>().CurrentStore.Id;
-                    return c.Resolve<ISettingService>().LoadSetting<TSettings>(currentStoreId);
-                })
-                .InstancePerLifetimeScope()
-                .CreateRegistration();
-        }
-
-        public bool IsAdapterForIndividualComponents { get { return false; } }
     }
 
 }

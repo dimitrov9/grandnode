@@ -1,16 +1,16 @@
+using Grand.Core;
+using Grand.Core.Infrastructure;
+using Grand.Services.Localization;
+using Microsoft.AspNetCore.Html;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.Encodings.Web;
-using Microsoft.AspNetCore.Html;
-using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.AspNetCore.Routing;
-using Grand.Core;
-using Grand.Core.Infrastructure;
-using Grand.Services.Localization;
-using Grand.Framework.Extensions;
 
 namespace Grand.Framework.UI.Paging
 {
@@ -116,7 +116,7 @@ namespace Grand.Framework.UI.Paging
 		{
             if (model.TotalItems == 0)
                 return null;
-            var localizationService = EngineContext.Current.Resolve<ILocalizationService>();
+            var localizationService = viewContext.HttpContext.RequestServices.GetRequiredService<ILocalizationService>();
 
             var links = new StringBuilder();
             if (showTotalSummary && (model.TotalPages > 0))
@@ -279,17 +279,17 @@ namespace Grand.Framework.UI.Paging
                 }
             }
 
-		    var webHelper = EngineContext.Current.Resolve<IWebHelper>();
+		    var webHelper = viewContext.HttpContext.RequestServices.GetRequiredService<IWebHelper>();
 		    var url = webHelper.GetThisPageUrl(false);
 		    foreach (var routeValue in routeValues)
 		    {
-		        url = webHelper.ModifyQueryString(url, routeValue.Key + "=" + routeValue.Value, null);
+		        url = webHelper.ModifyQueryString(url, routeValue.Key, routeValue.Value?.ToString());
 		    }
             if (renderEmptyParameters && parametersWithEmptyValues.Any())
             {
                 foreach (var key in parametersWithEmptyValues)
                 {
-                    url = webHelper.ModifyQueryString(url, key + "=", null);
+                    url = webHelper.ModifyQueryString(url, key, null);
                 }
             }
 			return url;

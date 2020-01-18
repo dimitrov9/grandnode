@@ -1,13 +1,17 @@
 ﻿using Grand.Core.Domain.Media;
 using Grand.Framework.Security;
+using Grand.Framework.Security.Authorization;
 using Grand.Services.Media;
+using Grand.Services.Security;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace Grand.Web.Areas.Admin.Controllers
 {
+    [PermissionAuthorize(PermissionSystemName.Files)]
     public partial class DownloadController : BaseAdminController
     {
         private readonly IDownloadService _downloadService;
@@ -17,9 +21,9 @@ namespace Grand.Web.Areas.Admin.Controllers
             this._downloadService = downloadService;
         }
 
-        public IActionResult DownloadFile(Guid downloadGuid)
+        public async Task<IActionResult> DownloadFile(Guid downloadGuid)
         {
-            var download = _downloadService.GetDownloadByGuid(downloadGuid);
+            var download = await _downloadService.GetDownloadByGuid(downloadGuid);
             if (download == null)
                 return Content("No download record found with the specified id");
 
@@ -43,8 +47,8 @@ namespace Grand.Web.Areas.Admin.Controllers
         [HttpPost]
         
         //do not validate request token (XSRF)
-        [AdminAntiForgery(true)] 
-        public IActionResult SaveDownloadUrl(string downloadUrl)
+        [IgnoreAntiforgeryToken] 
+        public async Task<IActionResult> SaveDownloadUrl(string downloadUrl)
         {
             if(string.IsNullOrEmpty(downloadUrl))
             {
@@ -58,17 +62,18 @@ namespace Grand.Web.Areas.Admin.Controllers
                 DownloadUrl = downloadUrl,
                 IsNew = true
               };
-            _downloadService.InsertDownload(download);
+            await _downloadService.InsertDownload(download);
 
             return Json(new { downloadId = download.Id, success = true });
         }
 
         [HttpPost]
         //do not validate request token (XSRF)
-        [AdminAntiForgery(true)]
-        public virtual IActionResult AsyncUpload()
+        [IgnoreAntiforgeryToken]
+        public virtual async Task<IActionResult> AsyncUpload()
         {
-            var httpPostedFile = Request.Form.Files.FirstOrDefault();
+            var form = await HttpContext.Request.ReadFormAsync();
+            var httpPostedFile = form.Files.FirstOrDefault();
             if (httpPostedFile == null)
             {
                 return Json(new
@@ -83,8 +88,8 @@ namespace Grand.Web.Areas.Admin.Controllers
 
             var qqFileNameParameter = "qqfilename";
             var fileName = httpPostedFile.FileName;
-            if (String.IsNullOrEmpty(fileName) && Request.Form.ContainsKey(qqFileNameParameter))
-                fileName = Request.Form[qqFileNameParameter].ToString();
+            if (String.IsNullOrEmpty(fileName) && form.ContainsKey(qqFileNameParameter))
+                fileName = form[qqFileNameParameter].ToString();
             //remove path (passed in IE)
             fileName = Path.GetFileName(fileName);
 
@@ -107,7 +112,7 @@ namespace Grand.Web.Areas.Admin.Controllers
                 Extension = fileExtension,
                 IsNew = true
             };
-            _downloadService.InsertDownload(download);
+            await _downloadService.InsertDownload(download);
 
             //when returning JSON the mime-type must be set to text/plain
             //otherwise some browsers will pop-up a "Save As" dialog.

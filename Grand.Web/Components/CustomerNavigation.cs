@@ -1,6 +1,7 @@
 ﻿using Grand.Framework.Components;
-using Grand.Web.Services;
+using Grand.Web.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using System.Threading.Tasks;
 
 namespace Grand.Web.Components
 {
@@ -10,12 +11,12 @@ namespace Grand.Web.Components
 
         public CustomerNavigationViewComponent(ICustomerViewModelService customerViewModelService)
         {
-            this._customerViewModelService = customerViewModelService;
+            _customerViewModelService = customerViewModelService;
         }
 
-        public IViewComponentResult Invoke(int selectedTabId = 0)
+        public async Task<IViewComponentResult> InvokeAsync(int selectedTabId = 0)
         {
-            var model = _customerViewModelService.PrepareNavigation(selectedTabId);
+            var model = await _customerViewModelService.PrepareNavigation(selectedTabId);
             return View(model);
         }
     }

@@ -1,7 +1,8 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Grand.Web.Services;
+﻿using Grand.Framework.Components;
+using Grand.Web.Interfaces;
+using Microsoft.AspNetCore.Mvc;
 using System.Linq;
-using Grand.Framework.Components;
+using System.Threading.Tasks;
 
 namespace Grand.Web.ViewComponents
 {
@@ -11,12 +12,12 @@ namespace Grand.Web.ViewComponents
 
         public PopularProductTagsViewComponent(ICatalogViewModelService catalogViewModelService)
         {
-            this._catalogViewModelService = catalogViewModelService;
+            _catalogViewModelService = catalogViewModelService;
         }
 
-        public IViewComponentResult Invoke(string currentCategoryId, string currentProductId)
+        public async Task<IViewComponentResult> InvokeAsync(string currentCategoryId, string currentProductId)
         {
-            var model = _catalogViewModelService.PreparePopularProductTags();
+            var model = await _catalogViewModelService.PreparePopularProductTags();
             if (!model.Tags.Any())
                 return Content("");
 

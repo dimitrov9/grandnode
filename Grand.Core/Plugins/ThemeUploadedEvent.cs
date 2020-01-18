@@ -1,10 +1,11 @@
-﻿
+﻿using MediatR;
+
 namespace Grand.Core.Plugins
 {
     /// <summary>
     /// Theme uploaded event
     /// </summary>
-    public class ThemeUploadedEvent
+    public class ThemeUploadedEvent : INotification
     {
         #region Ctor
 

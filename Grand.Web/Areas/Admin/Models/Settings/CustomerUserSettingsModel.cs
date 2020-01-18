@@ -1,10 +1,7 @@
-﻿using Grand.Framework.Mvc.Models;
+﻿using Grand.Framework.Mvc.ModelBinding;
+using Grand.Framework.Mvc.Models;
 using Microsoft.AspNetCore.Mvc.Rendering;
-using Grand.Framework.Mvc.ModelBinding;
 using System.Collections.Generic;
-
-using Grand.Framework;
-using Grand.Framework.Mvc;
 using System.ComponentModel.DataAnnotations;
 
 namespace Grand.Web.Areas.Admin.Models.Settings
@@ -174,6 +171,12 @@ namespace Grand.Web.Areas.Admin.Models.Settings
 
             [GrandResourceDisplayName("Admin.Configuration.Settings.CustomerUser.AcceptPrivacyPolicyEnabled")]
             public bool AcceptPrivacyPolicyEnabled { get; set; }
+
+            [GrandResourceDisplayName("Admin.Configuration.Settings.CustomerUser.HideReviewsTab")]
+            public bool HideReviewsTab { get; set; }
+
+            [GrandResourceDisplayName("Admin.Configuration.Settings.CustomerUser.HideCoursesTab")]
+            public bool HideCoursesTab { get; set; }
         }
 
         public partial class AddressSettingsModel : BaseGrandModel

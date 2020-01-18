@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using Grand.Core;
 using Grand.Core.Caching;
 using Grand.Core.Data;
@@ -9,6 +6,11 @@ using Grand.Core.Domain.Security;
 using Grand.Services.Customers;
 using Grand.Services.Localization;
 using MongoDB.Driver;
+using MongoDB.Driver.Linq;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Grand.Services.Security
 {
@@ -57,16 +59,16 @@ namespace Grand.Services.Security
         public PermissionService(IRepository<PermissionRecord> permissionRecordRepository,
             ICustomerService customerService,
             IWorkContext workContext,
-             ILocalizationService localizationService,
+            ILocalizationService localizationService,
             ILanguageService languageService,
-            ICacheManager cacheManager)
+            IEnumerable<ICacheManager> cacheManager)
         {
-            this._permissionRecordRepository = permissionRecordRepository;
-            this._customerService = customerService;
-            this._workContext = workContext;
-            this._localizationService = localizationService;
-            this._languageService = languageService;
-            this._cacheManager = cacheManager;
+            _permissionRecordRepository = permissionRecordRepository;
+            _customerService = customerService;
+            _workContext = workContext;
+            _localizationService = localizationService;
+            _languageService = languageService;
+            _cacheManager = cacheManager.First(o => o.GetType() == typeof(MemoryCacheManager));
         }
 
         #endregion
@@ -79,19 +81,16 @@ namespace Grand.Services.Security
         /// <param name="permissionRecordSystemName">Permission record system name</param>
         /// <param name="customerRole">Customer role</param>
         /// <returns>true - authorized; otherwise, false</returns>
-        protected virtual bool Authorize(string permissionRecordSystemName, CustomerRole customerRole)
+        protected virtual async Task<bool> Authorize(string permissionRecordSystemName, CustomerRole customerRole)
         {
-            if (String.IsNullOrEmpty(permissionRecordSystemName))
+            if (string.IsNullOrEmpty(permissionRecordSystemName))
                 return false;
 
             string key = string.Format(PERMISSIONS_ALLOWED_KEY, customerRole.Id, permissionRecordSystemName);
-            return _cacheManager.Get(key, () =>
+            return await _cacheManager.GetAsync(key, async () =>
             {
-                var permissionRecord = _permissionRecordRepository.Table.Where(x => x.CustomerRoles.Contains(customerRole.Id) && x.SystemName== permissionRecordSystemName).ToList();
-                if (permissionRecord.Any())
-                    return true;
-
-                return false;
+                var permissionRecord = await _permissionRecordRepository.Table.FirstOrDefaultAsync(x => x.SystemName == permissionRecordSystemName);
+                return permissionRecord?.CustomerRoles.Contains(customerRole.Id) ?? false;
             });
         }
 
@@ -103,14 +102,14 @@ namespace Grand.Services.Security
         /// Delete a permission
         /// </summary>
         /// <param name="permission">Permission</param>
-        public virtual void DeletePermissionRecord(PermissionRecord permission)
+        public virtual async Task DeletePermissionRecord(PermissionRecord permission)
         {
             if (permission == null)
                 throw new ArgumentNullException("permission");
 
-            _permissionRecordRepository.Delete(permission);
+            await _permissionRecordRepository.DeleteAsync(permission);
 
-            _cacheManager.RemoveByPattern(PERMISSIONS_PATTERN_KEY);
+            await _cacheManager.RemoveByPattern(PERMISSIONS_PATTERN_KEY);
         }
 
         /// <summary>
@@ -118,9 +117,9 @@ namespace Grand.Services.Security
         /// </summary>
         /// <param name="permissionId">Permission identifier</param>
         /// <returns>Permission</returns>
-        public virtual PermissionRecord GetPermissionRecordById(string permissionId)
+        public virtual Task<PermissionRecord> GetPermissionRecordById(string permissionId)
         {
-            return _permissionRecordRepository.GetById(permissionId);
+            return _permissionRecordRepository.GetByIdAsync(permissionId);
         }
 
         /// <summary>
@@ -128,72 +127,70 @@ namespace Grand.Services.Security
         /// </summary>
         /// <param name="systemName">Permission system name</param>
         /// <returns>Permission</returns>
-        public virtual PermissionRecord GetPermissionRecordBySystemName(string systemName)
+        public virtual async Task<PermissionRecord> GetPermissionRecordBySystemName(string systemName)
         {
             if (String.IsNullOrWhiteSpace(systemName))
-                return null;
+                return await Task.FromResult<PermissionRecord>(null);
 
             var query = from pr in _permissionRecordRepository.Table
                         where  pr.SystemName == systemName
                         orderby pr.Id
                         select pr;
 
-            var permissionRecord = query.FirstOrDefault();
-            return permissionRecord;
+            return await query.FirstOrDefaultAsync();
         }
 
         /// <summary>
         /// Gets all permissions
         /// </summary>
         /// <returns>Permissions</returns>
-        public virtual IList<PermissionRecord> GetAllPermissionRecords()
+        public virtual async Task<IList<PermissionRecord>> GetAllPermissionRecords()
         {
             var query = from pr in _permissionRecordRepository.Table
                         orderby pr.Name
                         select pr;
-            var permissions = query.ToList();
-            return permissions;
+            return await query.ToListAsync();
         }
 
         /// <summary>
         /// Inserts a permission
         /// </summary>
         /// <param name="permission">Permission</param>
-        public virtual void InsertPermissionRecord(PermissionRecord permission)
+        public virtual async Task InsertPermissionRecord(PermissionRecord permission)
         {
             if (permission == null)
                 throw new ArgumentNullException("permission");
 
-            _permissionRecordRepository.Insert(permission);
+            await _permissionRecordRepository.InsertAsync(permission);
 
-            _cacheManager.RemoveByPattern(PERMISSIONS_PATTERN_KEY);
+            await _cacheManager.RemoveByPattern(PERMISSIONS_PATTERN_KEY);
         }
 
         /// <summary>
         /// Updates the permission
         /// </summary>
         /// <param name="permission">Permission</param>
-        public virtual void UpdatePermissionRecord(PermissionRecord permission)
+        public virtual async Task UpdatePermissionRecord(PermissionRecord permission)
         {
             if (permission == null)
                 throw new ArgumentNullException("permission");
 
-            _permissionRecordRepository.Update(permission);
+            await _permissionRecordRepository.UpdateAsync(permission);
 
-            _cacheManager.RemoveByPattern(PERMISSIONS_PATTERN_KEY);
+            await _cacheManager.RemoveByPattern(PERMISSIONS_PATTERN_KEY);
         }
 
         /// <summary>
         /// Install permissions
         /// </summary>
         /// <param name="permissionProvider">Permission provider</param>
-        public virtual void InstallPermissions(IPermissionProvider permissionProvider)
+        public virtual async Task InstallPermissions(IPermissionProvider permissionProvider)
         {
             //install new permissions
             var permissions = permissionProvider.GetPermissions();
             foreach (var permission in permissions)
             {
-                var permission1 = GetPermissionRecordBySystemName(permission.SystemName);
+                var permission1 = await GetPermissionRecordBySystemName(permission.SystemName);
                 if (permission1 == null)
                 {
                     //new permission (install it)
@@ -209,7 +206,7 @@ namespace Grand.Services.Security
                     var defaultPermissions = permissionProvider.GetDefaultPermissions();
                     foreach (var defaultPermission in defaultPermissions)
                     {
-                        var customerRole = _customerService.GetCustomerRoleBySystemName(defaultPermission.CustomerRoleSystemName);
+                        var customerRole = await _customerService.GetCustomerRoleBySystemName(defaultPermission.CustomerRoleSystemName);
                         if (customerRole == null)
                         {
                             //new role (save it)
@@ -219,7 +216,7 @@ namespace Grand.Services.Security
                                 Active = true,
                                 SystemName = defaultPermission.CustomerRoleSystemName
                             };
-                            _customerService.InsertCustomerRole(customerRole);
+                            await _customerService.InsertCustomerRole(customerRole);
                         }
 
 
@@ -233,10 +230,39 @@ namespace Grand.Services.Security
                     }
 
                     //save new permission
-                    InsertPermissionRecord(permission1);
+                    await InsertPermissionRecord(permission1);
 
                     //save localization
-                    permission1.SaveLocalizedPermissionName(_localizationService, _languageService);
+                    await permission1.SaveLocalizedPermissionName(_localizationService, _languageService);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Install missing permissions
+        /// </summary>
+        /// <param name="permissionProvider">Permission provider</param>
+        public virtual async Task InstallNewPermissions(IPermissionProvider permissionProvider)
+        {
+            //install new permissions
+            var permissions = permissionProvider.GetPermissions();
+            foreach (var permission in permissions)
+            {
+                var permission1 = await GetPermissionRecordBySystemName(permission.SystemName);
+                if (permission1 == null)
+                {
+                    //new permission (install it)
+                    permission1 = new PermissionRecord {
+                        Name = permission.Name,
+                        SystemName = permission.SystemName,
+                        Category = permission.Category,
+                    };
+
+                    //save new permission
+                    await InsertPermissionRecord(permission1);
+
+                    //save localization
+                    await permission1.SaveLocalizedPermissionName(_localizationService, _languageService);
                 }
             }
         }
@@ -245,18 +271,18 @@ namespace Grand.Services.Security
         /// Uninstall permissions
         /// </summary>
         /// <param name="permissionProvider">Permission provider</param>
-        public virtual void UninstallPermissions(IPermissionProvider permissionProvider)
+        public virtual async Task UninstallPermissions(IPermissionProvider permissionProvider)
         {
             var permissions = permissionProvider.GetPermissions();
             foreach (var permission in permissions)
             {
-                var permission1 = GetPermissionRecordBySystemName(permission.SystemName);
+                var permission1 = await GetPermissionRecordBySystemName(permission.SystemName);
                 if (permission1 != null)
                 {
-                    DeletePermissionRecord(permission1);
+                    await DeletePermissionRecord(permission1);
 
                     //delete permission locales
-                    permission1.DeleteLocalizedPermissionName(_localizationService, _languageService);
+                    await permission1.DeleteLocalizedPermissionName(_localizationService, _languageService);
                 }
             }
 
@@ -267,9 +293,9 @@ namespace Grand.Services.Security
         /// </summary>
         /// <param name="permission">Permission record</param>
         /// <returns>true - authorized; otherwise, false</returns>
-        public virtual bool Authorize(PermissionRecord permission)
+        public virtual async Task<bool> Authorize(PermissionRecord permission)
         {
-            return Authorize(permission, _workContext.CurrentCustomer);
+            return await Authorize(permission, _workContext.CurrentCustomer);
         }
 
         /// <summary>
@@ -278,16 +304,15 @@ namespace Grand.Services.Security
         /// <param name="permission">Permission record</param>
         /// <param name="customer">Customer</param>
         /// <returns>true - authorized; otherwise, false</returns>
-        public virtual bool Authorize(PermissionRecord permission, Customer customer)
+        public virtual async Task<bool> Authorize(PermissionRecord permission, Customer customer)
         {
             if (permission == null)
                 return false;
 
             if (customer == null)
                 return false;
-
            
-            return Authorize(permission.SystemName, customer);
+            return await Authorize(permission.SystemName, customer);
         }
 
         /// <summary>
@@ -295,9 +320,9 @@ namespace Grand.Services.Security
         /// </summary>
         /// <param name="permissionRecordSystemName">Permission record system name</param>
         /// <returns>true - authorized; otherwise, false</returns>
-        public virtual bool Authorize(string permissionRecordSystemName)
+        public virtual async Task<bool> Authorize(string permissionRecordSystemName)
         {
-            return Authorize(permissionRecordSystemName, _workContext.CurrentCustomer);
+            return await Authorize(permissionRecordSystemName, _workContext.CurrentCustomer);
         }
 
         /// <summary>
@@ -306,14 +331,14 @@ namespace Grand.Services.Security
         /// <param name="permissionRecordSystemName">Permission record system name</param>
         /// <param name="customer">Customer</param>
         /// <returns>true - authorized; otherwise, false</returns>
-        public virtual bool Authorize(string permissionRecordSystemName, Customer customer)
+        public virtual async Task<bool> Authorize(string permissionRecordSystemName, Customer customer)
         {
             if (String.IsNullOrEmpty(permissionRecordSystemName))
                 return false;
 
             var customerRoles = customer.CustomerRoles.Where(cr => cr.Active);            
             foreach (var role in customerRoles)
-                if (Authorize(permissionRecordSystemName, role))
+                if (await Authorize(permissionRecordSystemName, role))
                     //yes, we have such permission
                     return true;
 

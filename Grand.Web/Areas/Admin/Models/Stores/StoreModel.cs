@@ -1,10 +1,10 @@
-﻿using Grand.Framework.Mvc.Models;
-using Microsoft.AspNetCore.Mvc.Rendering;
-using Grand.Framework.Mvc.ModelBinding;
-using System.Collections.Generic;
-using FluentValidation.Attributes;
-using Grand.Web.Areas.Admin.Validators.Stores;
+﻿using FluentValidation.Attributes;
 using Grand.Framework.Localization;
+using Grand.Framework.Mvc.ModelBinding;
+using Grand.Framework.Mvc.Models;
+using Grand.Web.Areas.Admin.Validators.Stores;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using System.Collections.Generic;
 
 namespace Grand.Web.Areas.Admin.Models.Stores
 {
@@ -16,6 +16,7 @@ namespace Grand.Web.Areas.Admin.Models.Stores
             Locales = new List<StoreLocalizedModel>();
             AvailableLanguages = new List<SelectListItem>();
             AvailableWarehouses = new List<SelectListItem>();
+            AvailableCountries = new List<SelectListItem>();
         }
 
         [GrandResourceDisplayName("Admin.Configuration.Stores.Fields.Name")]
@@ -56,6 +57,13 @@ namespace Grand.Web.Areas.Admin.Models.Stores
         
         public string CompanyVat { get; set; }
 
+        [GrandResourceDisplayName("Admin.Configuration.Stores.Fields.CompanyEmail")]
+
+        public string CompanyEmail { get; set; }
+
+        [GrandResourceDisplayName("Admin.Configuration.Stores.Fields.CompanyHours")]
+
+        public string CompanyHours { get; set; }
 
         public IList<StoreLocalizedModel> Locales { get; set; }
         //default language
@@ -69,6 +77,12 @@ namespace Grand.Web.Areas.Admin.Models.Stores
         
         public string DefaultWarehouseId { get; set; }
         public IList<SelectListItem> AvailableWarehouses { get; set; }
+
+        //default country
+        [GrandResourceDisplayName("Admin.Configuration.Stores.Fields.DefaultCountry")]
+
+        public string DefaultCountryId { get; set; }
+        public IList<SelectListItem> AvailableCountries { get; set; }
 
     }
 

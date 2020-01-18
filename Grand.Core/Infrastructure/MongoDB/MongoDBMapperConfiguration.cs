@@ -4,6 +4,7 @@ using Grand.Core.Domain.Common;
 using Grand.Core.Domain.Customers;
 using Grand.Core.Domain.Directory;
 using Grand.Core.Domain.Discounts;
+using Grand.Core.Domain.Documents;
 using Grand.Core.Domain.Forums;
 using Grand.Core.Domain.Logging;
 using Grand.Core.Domain.Media;
@@ -25,8 +26,7 @@ namespace Grand.Core.Infrastructure.MongoDB
         /// <summary>
         /// Register MongoDB mappings
         /// </summary>
-        /// <param name="config">Config</param>
-        public static void RegisterMongoDBMappings(GrandConfig config)
+        public static void RegisterMongoDBMappings()
         {
             BsonSerializer.RegisterSerializer(typeof(decimal), new DecimalSerializer(BsonType.Decimal128));
             BsonSerializer.RegisterSerializer(typeof(decimal?), new NullableSerializer<decimal>(new DecimalSerializer(BsonType.Decimal128)));
@@ -292,6 +292,14 @@ namespace Grand.Core.Infrastructure.MongoDB
                 cm.AutoMap();
                 cm.UnmapMember(c => c.RoundingType);
             });
+
+            BsonClassMap.RegisterClassMap<Document>(cm =>
+            {
+                cm.AutoMap();
+                cm.UnmapMember(c => c.DocumentStatus);
+                cm.UnmapMember(c => c.Reference);
+            });
+
         }
     }
 }

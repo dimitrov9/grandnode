@@ -13,10 +13,14 @@
                 string controlId = string.Format("product_attribute_{0}", attribute.Id);
                 string textPrompt = !string.IsNullOrEmpty(attribute.TextPrompt) ? attribute.TextPrompt : attribute.Name;
                 <tr>
-                    <td id="@string.Format("product_attribute_label_{0}", attribute.Id)">
+                    <td class="d-inline-flex w-100" id="@string.Format("product_attribute_label_{0}", attribute.Id)">
                         <span class="text-prompt">
                             @textPrompt
                         </span>
+                        @if (attribute.IsRequired)
+                        {
+                            <span class="pl-1 required">*</span>
+                        }
                         @if (!string.IsNullOrEmpty(attribute.Description))
                         {
                             <span class="attribute-description">
@@ -87,17 +91,25 @@
                                 break;
                             case AttributeControlType.TextBox:
                                 {
-                                    <input name="@(controlId)" type="text" class="form-control textbox" id="@(controlId)" value="@attribute.DefaultValue" />
+                                    <input name="@(controlId)" type="text" class="form-control textbox" id="@(controlId)" value="@(attribute.DefaultValue) " />
                                 }
                                 break;
                             case AttributeControlType.MultilineTextbox:
                                 {
-                                    <textarea class="form-control" cols="20" id="@(controlId)" name="@(controlId)">@attribute.DefaultValue</textarea>
+                                    <textarea class="form-control" cols="20" id="@(controlId)" name="@(controlId)">@(attribute.DefaultValue)</textarea>
                                 }
                                 break;
                             case AttributeControlType.Datepicker:
                                 {
-                                    @Html.DatePickerDropDowns(controlId + "_day", controlId + "_month", controlId + "_year", DateTime.Now.Year, DateTime.Now.Year + 1, attribute.SelectedDay, attribute.SelectedMonth, attribute.SelectedYear)
+                                    <date-picker-dropdown control-day="@(controlId + "_day")"
+                                        control-month="@(controlId + "_month")"
+                                        control-year="@(controlId + "_year")"
+                                        begin-year="@(DateTime.Now.Year)"
+                                        end-year="@(DateTime.Now.Year+1)"
+                                        selected-day="(attribute.SelectedDay.HasValue ? attribute.SelectedDay.Value : 0)"
+                                        selected-month="(attribute.SelectedMonth.HasValue ? attribute.SelectedMonth.Value : 0)"
+                                        selected-year="(attribute.SelectedYear.HasValue ? attribute.SelectedYear.Value : 0)"
+                                        class="col-12 input-group" />
                                 }
                                 break;
                             case AttributeControlType.FileUpload:
@@ -105,12 +117,12 @@
                                     Download download = null;
                                     if (!String.IsNullOrEmpty(attribute.DefaultValue))
                                     {
-                                        download = downloadService.GetDownloadByGuid(new Guid(attribute.DefaultValue));
+                                        download = await downloadService.GetDownloadByGuid(new Guid(attribute.DefaultValue));
                                     }
 
                                     //register CSS and JS
                                     Html.AddCssFileParts("~/scripts/fineuploader/fineuploader-4.2.2.min.css");
-                                    Html.AddScriptParts("~/scripts/fineuploader/jquery.fineuploader-4.2.2.min.js");
+                                    Html.AddScriptParts(ResourceLocation.Footer, "~/scripts/fineuploader/jquery.fineuploader-4.2.2.min.js");
 
                                     //ex. ['jpg', 'jpeg', 'png', 'gif'] or []
                                     var allowedFileExtensions = string.Join(", ", attribute.AllowedFileExtensions.Select(x => "'" + x.Trim() + "'").ToList());
@@ -147,7 +159,7 @@
                                                     <span class="qq-upload-spinner-selector qq-upload-spinner"></span>
                                                     <span class="qq-edit-filename-icon-selector qq-edit-filename-icon"></span>
                                                     <span class="qq-upload-file-selector qq-upload-file"></span>
-                                                    <input class="qq-edit-filename-selector qq-edit-filename" tabindex="0" type="text">
+                                                    <input class="qq-edit-filename-selector qq-edit-filename" tabindex="0" type="text" />
                                                     <span class="qq-upload-size-selector qq-upload-size"></span>
                                                     <a class="qq-upload-cancel-selector qq-upload-cancel" href="#">@T("Common.FileUploader.Cancel")</a>
                                                     <a class="qq-upload-retry-selector qq-upload-retry" href="#">@T("Common.FileUploader.Retry")</a>
@@ -157,7 +169,7 @@
                                             </ul>
                                         </div>
                                     </script>
-                                    <script>
+                                    <script asp-location="Footer">
                                         $(document).ready(function() {
                                             $("#@(controlId)uploader").fineUploader({
                                                 request: {
@@ -223,7 +235,7 @@
                                             </li>
                                         }
                                     </ul>
-                                    <script>
+                                    <script asp-location="Footer">
                                         $(document).ready(function() {
                                             $('.attributes #color-squares-@(attribute.Id)').delegate('input', 'click', function(event) {
                                                 $('.attributes #color-squares-@(attribute.Id)').find('li').removeClass('selected-value');
@@ -250,7 +262,7 @@
                                                     </span>
                                                     <input id="@(controlId)_@(attributeValue.Id)" type="radio" name="@(controlId)" value="@attributeValue.Id" checked="@attributeValue.IsPreSelected" />
                                                 </label>
-                                                <script>
+                                                <script asp-location="Footer">
                                                     $('[data-toggle="tooltip"]').tooltip({
                                                         animated: 'fade',
                                                         placement: 'right',
@@ -260,7 +272,7 @@
                                             </li>
                                         }
                                     </ul>
-                                    <script>
+                                    <script asp-location="Footer">
 	                                    $(document).ready(function() {
 	                                        $('.attributes #color-squares-@(attribute.Id)').delegate('input', 'click', function(event) {
 	                                            $('.attributes #color-squares-@(attribute.Id)').find('li').removeClass('selected-value');
@@ -323,14 +335,15 @@
             }
         }
         //render scripts
-        <script>
+        <script asp-location="Footer">
             function @(attributeChangeHandlerFuncName)() {
                 $.ajax({
                     cache: false,
                     url: '@Html.Raw(Url.Action("productdetails_attributechange", "product", new {productId = productId, validateAttributeConditions = attributesHaveConditions, loadPicture = attributesHaveAssociatedPictures }))',
                     data: $('#product-details-form').serialize(),
                     type: 'post',
-                    success: function(data) {
+                    context: { product: '@productId' },
+                    success: function (data, url) {
                         if (data.price) {
                             $('.price-value-@productId').text(data.price);
                         }
@@ -346,6 +359,15 @@
                         if (data.stockAvailability) {
                             $('#stock-availability-value-@productId').text(data.stockAvailability);
                         }
+                        if (data.backInStockSubscription) {
+                            $('#back-in-stock-subscribe-@productId').show();
+                        }
+                        else {
+                            $('#back-in-stock-subscribe-@productId').hide();
+                        }
+                        if (data.buttonTextBackInStockSubscription) {
+                            $('#back-in-stock-subscribe-@productId').val(data.buttonTextBackInStockSubscription);
+                        }
                         if (data.enabledattributemappingids) {
                             for (var i = 0; i < data.enabledattributemappingids.length; i++) {
                                 $('#product_attribute_label_' + data.enabledattributemappingids[i]).show();
@@ -358,39 +380,20 @@
                                 $('#product_attribute_input_' + data.disabledattributemappingids[i]).hide();
                             }
                         }
-                        setTimeout(function () { if (data.pictureDefaultSizeUrl) {
-                            $('#main-product-img-@productId').attr("src", data.pictureDefaultSizeUrl);
-                            $('.sp-large img').attr("src", data.pictureFullSizeUrl);
-                            $('.sp-large a').attr("href", data.pictureFullSizeUrl);
-                            $(".sp-thumbs a").each(function () {
-                                if ($(this).attr("href") === $('.sp-large a').attr("href")) {
-                                    $(".sp-thumbs .sp-current").removeClass("sp-current");
-                                    $(this).addClass("sp-current");
+                        var product = this.product;
+                        setTimeout(function () {
+                            if (data.pictureDefaultSizeUrl) {
+                                if ($(".product-grouped").length == 0) {
+                                    $('#main-product-img-@productId').attr("src", data.pictureDefaultSizeUrl);
+                                    if ($(".zoomImg").length) {
+                                        $(".zoomImg").attr("src", data.pictureFullSizeUrl)
+                                    }
                                 }
-                            });
-                        }}, 100);
+                                else {
+                                    $('#main-product-img-'+product).attr("src", data.pictureDefaultSizeUrl);
+                                }
 
-                        if (data.pictureFullSizeUrl) {
-                            $('#main-product-img-lightbox-anchor-@productId').attr("href", data.pictureFullSizeUrl);
-                        }
-                        $(".color-squares li").click(function () {
-                            var clicked_square = $(this).index();
-                            $(".sp-thumbs a").each(function () {
-                                var slide_for_click = $(this).index();
-                                if (clicked_square == slide_for_click) {
-                                    $(this).trigger("click")
-                                }
-                            });
-                        });
-                        $(".image-squares li").click(function () {
-                            var clicked_square = $(this).index();
-                            $(".sp-thumbs a").each(function () {
-                                var slide_for_click = $(this).index();
-                                if (clicked_square == slide_for_click) {
-                                    $(this).trigger("click")
-                                }
-                            });
-                        });
+                            }}, 100);
                     }
                 });
             }

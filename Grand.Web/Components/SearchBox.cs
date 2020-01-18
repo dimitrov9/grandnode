@@ -1,6 +1,7 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Grand.Web.Services;
-using Grand.Framework.Components;
+﻿using Grand.Framework.Components;
+using Grand.Web.Interfaces;
+using Microsoft.AspNetCore.Mvc;
+using System.Threading.Tasks;
 
 namespace Grand.Web.ViewComponents
 {
@@ -10,12 +11,12 @@ namespace Grand.Web.ViewComponents
 
         public SearchBoxViewComponent(ICatalogViewModelService catalogViewModelService)
         {
-            this._catalogViewModelService = catalogViewModelService;
+            _catalogViewModelService = catalogViewModelService;
         }
 
-        public IViewComponentResult Invoke()
+        public async Task<IViewComponentResult> InvokeAsync()
         {
-            var model = _catalogViewModelService.PrepareSearchBox();
+            var model = await _catalogViewModelService.PrepareSearchBox();
             return View(model);
         }
     }

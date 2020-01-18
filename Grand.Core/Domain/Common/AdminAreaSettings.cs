@@ -1,5 +1,4 @@
-﻿
-using Grand.Core.Configuration;
+﻿using Grand.Core.Configuration;
 
 namespace Grand.Core.Domain.Common
 {
@@ -27,14 +26,5 @@ namespace Grand.Core.Domain.Common
         /// </summary>
         public bool UseIsoDateTimeConverterInJson { get; set; }
 
-        /// <summary>
-        /// Gets or sets a value for admin layout
-        /// </summary>
-        public string AdminLayout { get; set; }
-
-        /// <summary>
-        /// Gets or sets a value for admin grid layout
-        /// </summary>
-        public string KendoLayout { get; set; }
     }
 }

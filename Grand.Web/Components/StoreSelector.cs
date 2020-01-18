@@ -1,6 +1,7 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Grand.Web.Services;
-using Grand.Framework.Components;
+﻿using Grand.Framework.Components;
+using Grand.Web.Interfaces;
+using Microsoft.AspNetCore.Mvc;
+using System.Threading.Tasks;
 
 namespace Grand.Web.ViewComponents
 {
@@ -10,12 +11,12 @@ namespace Grand.Web.ViewComponents
 
         public StoreSelectorViewComponent(ICommonViewModelService commonViewModelService)
         {
-            this._commonViewModelService = commonViewModelService;
+            _commonViewModelService = commonViewModelService;
         }
 
-        public IViewComponentResult Invoke()
+        public async Task<IViewComponentResult> InvokeAsync()
         {
-            var model = _commonViewModelService.PrepareStoreSelector();
+            var model = await _commonViewModelService.PrepareStoreSelector();
             if(model == null || model.AvailableStores.Count == 1)
                 Content("");
 

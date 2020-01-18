@@ -1,9 +1,6 @@
+using Grand.Core.Domain.Common;
 using System;
 using System.Linq;
-using Grand.Core.Domain.Common;
-using Grand.Core.Domain.Orders;
-using MongoDB.Bson;
-using Grand.Core.Infrastructure;
 
 namespace Grand.Core.Domain.Customers
 {
@@ -75,6 +72,16 @@ namespace Grand.Core.Domain.Customers
         public static bool IsAdmin(this Customer customer, bool onlyActiveCustomerRoles = true)
         {
             return IsInCustomerRole(customer, SystemCustomerRoleNames.Administrators, onlyActiveCustomerRoles);
+        }
+
+        /// <summary>
+        /// Gets a value indicating whether customer is staff
+        /// </summary>
+        /// <param name="customer">Customer</param>
+        /// <returns>Result</returns>
+        public static bool IsStaff(this Customer customer)
+        {
+            return IsInCustomerRole(customer, SystemCustomerRoleNames.Staff);
         }
 
         /// <summary>

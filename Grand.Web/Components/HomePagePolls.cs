@@ -1,7 +1,8 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Grand.Web.Services;
+﻿using Grand.Framework.Components;
+using Grand.Web.Interfaces;
+using Microsoft.AspNetCore.Mvc;
 using System.Linq;
-using Grand.Framework.Components;
+using System.Threading.Tasks;
 
 namespace Grand.Web.ViewComponents
 {
@@ -11,12 +12,12 @@ namespace Grand.Web.ViewComponents
 
         public HomePagePollsViewComponent(IPollViewModelService pollViewModelService)
         {
-            this._pollViewModelService = pollViewModelService;
+            _pollViewModelService = pollViewModelService;
         }
 
-        public IViewComponentResult Invoke()
+        public async Task<IViewComponentResult> InvokeAsync()
         {
-            var model = _pollViewModelService.PrepareHomePagePoll();
+            var model = await _pollViewModelService.PrepareHomePagePoll();
             if (!model.Any())
                 Content("");
             return View(model);

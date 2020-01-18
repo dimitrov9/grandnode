@@ -1,7 +1,7 @@
-﻿using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Routing;
-using Grand.Framework.Localization;
+﻿using Grand.Framework.Localization;
 using Grand.Framework.Mvc.Routing;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Routing;
 
 namespace Grand.Web.Infrastructure
 {
@@ -39,6 +39,46 @@ namespace Grand.Web.Infrastructure
             routeBuilder.MapLocalizedRoute("ShoppingCart",
                             "cart/",
                             new { controller = "ShoppingCart", action = "Cart" });
+
+            //Continue shopping
+            routeBuilder.MapLocalizedRoute("ContinueShopping",
+                "cart/continueshopping/",
+                new { controller = "ShoppingCart", action = "ContinueShopping" });
+
+            //clear cart
+            routeBuilder.MapLocalizedRoute("ClearCart",
+                "cart/clear/",
+                new { controller = "ShoppingCart", action = "ClearCart" });
+
+            //start checkout
+            routeBuilder.MapLocalizedRoute("StartCheckout",
+                "cart/checkout/",
+                new { controller = "ShoppingCart", action = "StartCheckout" });
+
+            routeBuilder.MapLocalizedRoute("ApplyDiscountCoupon",
+                            "applydiscountcoupon/",
+                            new { controller = "ShoppingCart", action = "ApplyDiscountCoupon" });
+
+            routeBuilder.MapLocalizedRoute("RemoveDiscountCoupon",
+                            "removediscountcoupon/",
+                            new { controller = "ShoppingCart", action = "RemoveDiscountCoupon" });
+
+            routeBuilder.MapLocalizedRoute("ApplyGiftCard",
+                            "applygiftcard/",
+                            new { controller = "ShoppingCart", action = "ApplyGiftCard" });
+
+            routeBuilder.MapLocalizedRoute("RemoveGiftCardCode",
+                "removegiftcardcode/",
+                new { controller = "ShoppingCart", action = "RemoveGiftCardCode" });
+
+            routeBuilder.MapLocalizedRoute("UpdateCart",
+                "updatecart/",
+                new { controller = "ShoppingCart", action = "UpdateCart" });
+
+            //get state list by country ID  (AJAX link)
+            routeBuilder.MapRoute("DeleteCartItem",
+                            "deletecartitem/{id}",
+                            new { controller = "ShoppingCart", action = "DeleteCartItem" });
 
             //estimate shipping
             routeBuilder.MapLocalizedRoute("EstimateShipping",
@@ -180,6 +220,11 @@ namespace Grand.Web.Infrastructure
             routeBuilder.MapLocalizedRoute("ProductsByTag",
                             "producttag/{productTagId}/{SeName}",
                             new { controller = "Catalog", action = "ProductsByTag" });
+
+            routeBuilder.MapLocalizedRoute("ProductsByTagName",
+                            "producttag/{SeName}",
+                            new { controller = "Catalog", action = "ProductsByTagName" });
+
             //comparing products
             routeBuilder.MapLocalizedRoute("AddProductToCompare",
                             "compareproducts/add/{productId}",
@@ -195,17 +240,24 @@ namespace Grand.Web.Infrastructure
 
             //product ask question on product page
             routeBuilder.MapLocalizedRoute("AskQuestionOnProduct",
-                            "askquestiononproduct/{productId}",
+                            "askquestiononproduct",
                             new { controller = "Product", action = "AskQuestionOnProduct" });
 
             //reviews
             routeBuilder.MapLocalizedRoute("ProductReviews",
                             "productreviews/{productId}",
                             new { controller = "Product", action = "ProductReviews" });
+
             //back in stock notifications
             routeBuilder.MapLocalizedRoute("BackInStockSubscribePopup",
                             "backinstocksubscribe/{productId}",
                             new { controller = "BackInStockSubscription", action = "SubscribePopup" });
+
+            //back in stock notifications button text
+            routeBuilder.MapLocalizedRoute("BackInStockSubscribeButton",
+                            "backinstocksubscribebutton/{productId}",
+                            new { controller = "BackInStockSubscription", action = "SubscribeButton" });
+
             //downloads
             routeBuilder.MapRoute("GetSampleDownload",
                             "download/sample/{productid}",
@@ -298,6 +350,12 @@ namespace Grand.Web.Infrastructure
             routeBuilder.MapLocalizedRoute("BlogByMonth",
                             "blog/month/{month}",
                             new { controller = "Blog", action = "BlogByMonth" });
+            routeBuilder.MapLocalizedRoute("BlogByCategory",
+                            "blog/category/{categoryid}",
+                            new { controller = "Blog", action = "BlogByCategory" });
+            routeBuilder.MapLocalizedRoute("BlogByKeyword",
+                            "blog/keyword/{searchKeyword}",
+                            new { controller = "Blog", action = "BlogByKeyword" });
             //blog RSS
             routeBuilder.MapLocalizedRoute("BlogRSS",
                             "blog/rss/{languageId}",
@@ -344,9 +402,18 @@ namespace Grand.Web.Infrastructure
             routeBuilder.MapLocalizedRoute("CustomerNotes",
                             "customer/notes",
                             new { controller = "Customer", action = "Notes" });
+            routeBuilder.MapLocalizedRoute("CustomerDocuments",
+                            "customer/documents",
+                            new { controller = "Customer", action = "Documents" });
+            routeBuilder.MapLocalizedRoute("CustomerCourses",
+                            "customer/courses",
+                            new { controller = "Customer", action = "Courses" });
             routeBuilder.MapLocalizedRoute("AccountActivation",
                             "customer/activation",
                             new { controller = "Customer", action = "AccountActivation" });
+            routeBuilder.MapLocalizedRoute("CustomerReviews",
+                            "customer/reviews",
+                            new { controller = "Customer", action = "Reviews" });
             routeBuilder.MapLocalizedRoute("CustomerForumSubscriptions",
                             "boards/forumsubscriptions",
                             new { controller = "Boards", action = "CustomerForumSubscriptions" });
@@ -393,6 +460,9 @@ namespace Grand.Web.Infrastructure
             routeBuilder.MapLocalizedRoute("CancelOrder",
                             "orderdetails/cancel/{orderId}",
                             new { controller = "Order", action = "CancelOrder" });
+            routeBuilder.MapLocalizedRoute("AddOrderNote",
+                            "orderdetails/ordernote/{orderId}",
+                            new { controller = "Order", action = "AddOrderNote" });
 
             //order downloads
             routeBuilder.MapRoute("GetDownload",
@@ -411,7 +481,9 @@ namespace Grand.Web.Infrastructure
             routeBuilder.MapRoute("GetCustomerNoteFile",
                             "download/customernotefile/{customernoteid}",
                             new { controller = "Download", action = "GetCustomerNoteFile" });
-
+            routeBuilder.MapRoute("GetDocumentFile",
+                           "download/documentfile/{documentid}",
+                           new { controller = "Download", action = "GetDocumentFile" });
             //contact vendor
             routeBuilder.MapLocalizedRoute("ContactVendor",
                             "contactvendor/{vendorId}",
@@ -598,41 +670,11 @@ namespace Grand.Web.Infrastructure
             routeBuilder.MapLocalizedRoute("PageNotFound", "page-not-found",
                             new { controller = "Common", action = "PageNotFound" });
 
-            //push notifications
-            routeBuilder.MapRoute(
-               "PushNotifications.Send",
-               "Admin/PushNotifications/Send",
-            new { controller = "PushNotifications", action = "Send" });
+            
 
-            routeBuilder.MapRoute(
-                "PushNotifications.Messages",
-                "Admin/PushNotifications/Messages",
-            new { controller = "PushNotifications", action = "Messages" });
-
-            routeBuilder.MapRoute(
-               "PushNotifications.Receivers",
-               "Admin/PushNotifications/Receivers",
-            new { controller = "PushNotifications", action = "Receivers" });
-
-            routeBuilder.MapRoute(
-                "PushNotifications.DeleteReceiver",
-                "Admin/PushNotifications/DeleteReceiver",
-                new { controller = "PushNotifications", action = "DeleteReceiver" });
-
-            routeBuilder.MapRoute(
-                "PushNotifications.Configure",
-                "Admin/PushNotifications/Configure",
-                new { controller = "PushNotifications", action = "Configure" });
-
-            routeBuilder.MapRoute(
-                "PushNotifications.PushMessagesList",
-                "Admin/PushNotifications/PushMessagesList",
-            new { controller = "PushNotifications", action = "PushMessagesList" });
-
-            routeBuilder.MapRoute(
-                "PushNotifications.PushReceiversList",
-                "Admin/PushNotifications/PushReceiversList",
-            new { controller = "PushNotifications", action = "PushReceiversList" });
+            //lets encrypt
+            routeBuilder.MapRoute("well-known", ".well-known/acme-challenge/{fileName}", 
+                new { controller = "LetsEncrypt", action = "Index" });
         }
 
         public int Priority

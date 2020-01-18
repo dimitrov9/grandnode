@@ -1,10 +1,10 @@
-﻿using Grand.Framework.Mvc.Models;
-using Microsoft.AspNetCore.Mvc.Rendering;
+﻿using FluentValidation.Attributes;
 using Grand.Framework.Mvc.ModelBinding;
+using Grand.Framework.Mvc.Models;
+using Grand.Web.Areas.Admin.Validators.Messages;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using System;
 using System.Collections.Generic;
-using FluentValidation.Attributes;
-using Grand.Web.Areas.Admin.Validators.Messages;
 using System.ComponentModel.DataAnnotations;
 
 namespace Grand.Web.Areas.Admin.Models.Messages
@@ -93,7 +93,7 @@ namespace Grand.Web.Areas.Admin.Models.Messages
 
 
         [GrandResourceDisplayName("Admin.Promotions.Campaigns.Fields.AllowedTokens")]
-        public string AllowedTokens { get; set; }
+        public string[] AllowedTokens { get; set; }
 
         [GrandResourceDisplayName("Admin.Promotions.Campaigns.Fields.EmailAccount")]
         public string EmailAccountId { get; set; }

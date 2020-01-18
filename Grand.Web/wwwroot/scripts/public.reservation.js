@@ -37,7 +37,7 @@
         if (document.getElementById("reservationDatepickerTo") != null) {
             this.fillAvailableDatesTo(startDateYear, startDateMonth);
         }
-
+        var defdate = new Date(this.startDate);
         $("#reservationDatepicker").datepicker({
             onSelect: this.onDatePickerDateChange,
             firstDay: 1,
@@ -47,33 +47,28 @@
                 Reservation.fillAvailableDates(year, month, Reservation._parameter, false);
                 Reservation.onDatePickerDateChange();
             },
-            defaultDate: this.startDate
-        }
-        );
+            defaultDate: defdate
+        });
 
         $("#reservationDatepickerFrom").datepicker({
             firstDay: 1,
-            defaultDate: this.startDate,
+            defaultDate: defdate,
             onSelect: this.onDatePickerSelect,
             beforeShowDay: this.daysToMarkFrom,
             onChangeMonthYear: function (year, month, inst) {
                 Reservation.fillAvailableDatesFrom(year, month);
             },
-            defaultDate: this.startDate
-        }
-        );
+        });
 
         $("#reservationDatepickerTo").datepicker({
             firstDay: 1,
-            defaultDate: this.startDate,
+            defaultDate: defdate,
             onSelect: this.onDatePickerSelect,
             beforeShowDay: this.daysToMarkTo,
             onChangeMonthYear: function (year, month, inst) {
                 Reservation.fillAvailableDatesTo(year, month);
             },
-            defaultDate: this.startDate
-        }
-        );
+        });
 
         this.onDatePickerDateChange();
         var dropdown = document.getElementById("parameterDropdown");
@@ -167,7 +162,7 @@
                 var day = splitResults[2].substring(0, 2);
 
                 if (selectedYear == year && selectedMonth == month && selectedDay == day) {
-                    $("#hoursDiv").append("<label class='btn btn-secondary'><input type='radio' id='Reservation_" + Reservation.availableDates[i].Id + "' name='Reservation' value='" + Reservation.availableDates[i].Id + "' />" + Reservation.availableDates[i].Date.substring(11, 16) + "</label>");
+                    $("#hoursDiv").append("<a class='btn btn-secondary text-white rounded-0 mr-1 mb-1'><input type='radio' id='Reservation_" + Reservation.availableDates[i].Id + "' name='Reservation' value='" + Reservation.availableDates[i].Id + "' />" + Reservation.availableDates[i].Date.substring(11, 16) + "</a>");
                 }
             }
 

@@ -1,6 +1,7 @@
 ﻿using Grand.Framework.Components;
-using Grand.Web.Services;
+using Grand.Web.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using System.Threading.Tasks;
 
 namespace Grand.Web.Components
 {
@@ -16,18 +17,19 @@ namespace Grand.Web.Components
             ITopicViewModelService topicViewModelService
 )
         {
-            this._topicViewModelService = topicViewModelService;
+            _topicViewModelService = topicViewModelService;
         }
 
         #endregion
 
         #region Invoker
 
-        public IViewComponentResult Invoke(string systemName)
+        public async Task<IViewComponentResult> InvokeAsync(string systemName)
         {
-            var model = _topicViewModelService.TopicBlock(systemName);
+            var model = await _topicViewModelService.TopicBlock(systemName);
             if (model == null)
                 return Content("");
+
             return View(model);
         }
 

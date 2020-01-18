@@ -1,10 +1,10 @@
-﻿using Grand.Framework.Mvc.Models;
-using Microsoft.AspNetCore.Mvc.Rendering;
-using Grand.Framework.Mvc.ModelBinding;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
+﻿using Grand.Framework.Mvc.ModelBinding;
+using Grand.Framework.Mvc.Models;
 using Grand.Framework.Security.Captcha;
 using Grand.Web.Areas.Admin.Helpers;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 
 namespace Grand.Web.Areas.Admin.Models.Settings
 {
@@ -32,11 +32,6 @@ namespace Grand.Web.Areas.Admin.Models.Settings
         public GoogleAnalyticsSettingsModel GoogleAnalyticsSettings { get; set; }
         public DisplayMenuSettingsModel DisplayMenuSettings { get; set; }
         public KnowledgebaseSettingsModel KnowledgebaseSettings { get; set; }
-
-        [GrandResourceDisplayName("Admin.Configuration.Settings.AdminLayout")]
-        public AdminLayout Layout { get; set; }
-        [GrandResourceDisplayName("Admin.Configuration.Settings.GridLayout")]
-        public KendoLayout GridLayout { get; set; }
 
         #region Nested classes
 
@@ -81,10 +76,6 @@ namespace Grand.Web.Areas.Admin.Models.Settings
             [GrandResourceDisplayName("Admin.Configuration.Settings.GeneralCommon.YoutubeLink")]
             public string YoutubeLink { get; set; }
             public bool YoutubeLink_OverrideForStore { get; set; }
-
-            [GrandResourceDisplayName("Admin.Configuration.Settings.GeneralCommon.GooglePlusLink")]
-            public string GooglePlusLink { get; set; }
-            public bool GooglePlusLink_OverrideForStore { get; set; }
 
             [GrandResourceDisplayName("Admin.Configuration.Settings.GeneralCommon.InstagramLink")]
             public string InstagramLink { get; set; }

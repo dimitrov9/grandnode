@@ -1,11 +1,10 @@
-﻿using System;
-using System.Net;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Filters;
-using Grand.Core;
+﻿using Grand.Core;
 using Grand.Core.Data;
 using Grand.Core.Domain.Seo;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Filters;
+using System;
 
 namespace Grand.Framework.Mvc.Filters
 {
@@ -40,8 +39,8 @@ namespace Grand.Framework.Mvc.Filters
             public WwwRequirementFilter(IWebHelper webHelper,
                 SeoSettings seoSettings)
             {
-                this._webHelper = webHelper;
-                this._seoSettings = seoSettings;
+                _webHelper = webHelper;
+                _seoSettings = seoSettings;
             }
 
             #endregion

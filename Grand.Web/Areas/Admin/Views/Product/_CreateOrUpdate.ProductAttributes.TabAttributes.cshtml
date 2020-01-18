@@ -2,8 +2,13 @@
 @using Grand.Core.Domain.Catalog
 
 <div class="panel panel-default">
+    <vc:admin-widget widget-zone="product_details_product_attributes_top" additional-data="Model" />
     <div class="panel-body">
         <div id="productattributemappings-grid"></div>
+    </div>
+    <vc:admin-widget widget-zone="product_details_product_attributes_bottom" additional-data="Model" />
+    <div class="panel-footer">
+        <button type="submit" id="btnAddNewCombination" onclick="javascript:OpenWindow('@(Url.Action("ProductAttributeMappingPopup", "Product", new { productId = Model.Id, btnId = "btnRefreshProductAttributes", formId = "product-form" }))', 800, 600, true); return false;" class="k-button"><i class="fa fa-plus"></i>&nbsp;@T("Admin.Catalog.Products.ProductAttributes.AddNew")</button>
     </div>
 </div>
 
@@ -79,23 +84,8 @@
                     previousNext: false,
                     info: false
                 },
-                toolbar: [{ name: "create", text: "@T("Admin.Common.AddNewRecord")" }],
-                edit: function(e) {
-                    if (e.model.isNew()) {
-                        //little hack here
-                        //pre-select the first value of kendoui dropdownlist datasource
-                        //for some reasons (maybe, bug) it always sends 0
-                        //if no value has been selected (changed) in the dropdownlist
-                        if (allProductAttributes.length > 0) {
-                            e.model.ProductAttributeId = allProductAttributes[0].Id;
-                        }
-                        if (allAttributeControlTypes.length > 0) {
-                            e.model.AttributeControlTypeId = allAttributeControlTypes[0].Id;
-                        }
-                    }
-                },
                 editable: {
-                    confirmation: true,
+                    confirmation: false,
                     mode: "inline"
                 },
                 scrollable: false,
@@ -103,9 +93,8 @@
                     {
                         field: "ProductAttributeId",
                         title: "@T("Admin.Catalog.Products.ProductAttributes.Attributes.Fields.Attribute")",
-                        width: 140,
-                        editor: productAttributeDropDownEditor,
-                        template: "#:ProductAttribute#"
+                        width: 190,
+                        template: "<a class='k-link' href='javascript:OpenWindow(\"@Url.Content("~/Admin/Product/ProductAttributeMappingPopup/")?productId=@(Model.Id)&productAttributeMappingId=#=Id#&btnId=btnRefreshProductAttributes&formId=product-form\", 800, 600, true);'>#=kendo.htmlEncode(ProductAttribute)#<br /></a>"
                     }, {
                         field: "TextPrompt",
                         title: "@T("Admin.Catalog.Products.ProductAttributes.Attributes.Fields.TextPrompt")",
@@ -153,18 +142,11 @@
                     {
                         command: [
                             {
-                                name: "edit",
-                                text: {
-                                    edit: "@T("Admin.Common.Edit")",
-                                    update: "@T("Admin.Common.Update")",
-                                    cancel: "@T("Admin.Common.Cancel")"
-                                }
-                            }, {
                                 name: "destroy",
                                 text: "@T("Admin.Common.Delete")"
                             }
                         ],
-                        width: 200
+                        width: 50
                     }
                 ]
             });
@@ -190,7 +172,7 @@
 
         var allAttributeControlTypes = [
             @{
-                var allAttributeControlTypes = (from act in AttributeControlType.DropdownList.ToSelectList()
+                var allAttributeControlTypes = (from act in AttributeControlType.DropdownList.ToSelectList(Context)
                     select new {Id = act.Value, Name = act.Text}).ToList();
             }
             @for (int i = 0; i < allAttributeControlTypes.Count; i++)

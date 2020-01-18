@@ -2,7 +2,7 @@
 @using System.Globalization
 @inject CatalogSettings catalogSettings
 @{
-    Html.AppendScriptParts("~/scripts/public.reservation.js");
+    Html.AppendScriptParts(ResourceLocation.Footer, "~/scripts/public.reservation.js");
     Html.AddCssFileParts("~/content/jquery-ui-themes/smoothness/jquery-ui.calendar.min.css");
 }
     <div style="margin-top:10px">
@@ -38,14 +38,14 @@
             </div>
             <div>
                 <h5 style="margin-top:10px">@T("Products.Reservation.Hour"):</h5>
-                <div id="hoursDiv" class="btn-group d-flex flex-wrap" data-toggle="buttons"></div>
+                <div id="hoursDiv" class="d-inline-flex flex-wrap" data-toggle="buttons"></div>
             </div>
         }
     </div>
 
-<script>
+<script asp-location="Footer">
     $(document).ready(function () {
-        Reservation.init("@Model.StartDate.ToString(CultureInfo.CreateSpecificCulture("en-US"))", "@Model.StartDate.Year", "@Model.StartDate.Month", "@T("Products.Noavailablereservations")",
+        Reservation.init("@Model.StartDate.ToString("d", CultureInfo.CreateSpecificCulture("en-US"))", "@Model.StartDate.Year", "@Model.StartDate.Month", "@T("Products.Noavailablereservations")",
             "@(Url.Action("GetDatesForMonth", "Product"))", "@Model.Id",
             "@Html.Raw(Url.Action("productdetails_attributechange", "product", new { productId = Model.Id, validateAttributeConditions = false }))");
     });

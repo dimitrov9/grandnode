@@ -1,6 +1,6 @@
-﻿using System.Collections.Generic;
-using Grand.Framework.Mvc.Models;
+﻿using Grand.Framework.Mvc.Models;
 using Grand.Web.Models.Media;
+using System.Collections.Generic;
 
 namespace Grand.Web.Models.Catalog
 {
@@ -20,12 +20,9 @@ namespace Grand.Web.Models.Catalog
         public string MetaDescription { get; set; }
         public string MetaTitle { get; set; }
         public string SeName { get; set; }
-
-
+        public string Icon { get; set; }
         public PictureModel PictureModel { get; set; }
-
         public CatalogPagingFilteringModel PagingFilteringContext { get; set; }
-
         public IList<ProductOverviewModel> FeaturedProducts { get; set; }
         public IList<ProductOverviewModel> Products { get; set; }
     }

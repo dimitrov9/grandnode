@@ -1,6 +1,7 @@
 ﻿@model ForumTopicPageModel
 @using Grand.Web.Models.Boards;
 @using Grand.Web.Models.Common;
+@inject Grand.Services.Localization.ILocalizationService localizationService
 @{
     Layout = "_ColumnsOne";
 
@@ -21,7 +22,7 @@
             {
                 <a href="#" class="btn btn-secondary delete-topic-button" onclick="deletetopic('@(Model.Id)')">
                     <span class="d-none d-md-block">@T("Forum.DeleteTopic").Text</span>
-                    <i class="fa fa-trash d-md-none" aria-hidden="true"></i>
+                    <span class="mdi mdi-delete d-md-none" aria-hidden="true"></span>
                 </a>
             }
             @if (Model.IsCustomerAllowedToMoveTopic)
@@ -33,12 +34,12 @@
             {
                 <a class="btn btn-secondary watch-topic-button" href="#" id="watch-topic-top">
                     <span class="d-none d-md-block">@Model.WatchTopicText</span>
-                    <i class="fa fa-ban d-md-none" aria-hidden="true"></i>
+                    <span class="mdi mdi-cancel d-md-none" aria-hidden="true"></span>
                 </a>
             }
         </div>
         @{
-            var pager = Html.Pager(new PagerModel
+            var pager = Html.Pager(localizationService, new PagerModel(localizationService)
             {
                 PageSize = Model.PostsPageSize,
                 TotalRecords = Model.PostsTotalRecords,
@@ -59,7 +60,7 @@
     <div class="topic-posts">
         @foreach (var post in @Model.ForumPostModels)
         {
-            Html.RenderPartial("_ForumPost", post);
+            await Html.RenderPartialAsync("_ForumPost", post);
         }
     </div>
     <div class="topic-actions">
@@ -79,7 +80,7 @@
     </div>
 </div>
 
-<script>
+<script asp-location="Footer">
     function deletepost(postId) {
         if (confirm('@T("Common.AreYouSure")')) {
             var postData = {

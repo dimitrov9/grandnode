@@ -1,12 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using FluentValidation.Attributes;
+﻿using FluentValidation.Attributes;
+using Grand.Framework.Mvc.ModelBinding;
 using Grand.Framework.Mvc.Models;
+using Grand.Web.Models.Newsletter;
 using Grand.Web.Validators.Customer;
 using Microsoft.AspNetCore.Mvc.Rendering;
-using Grand.Framework.Mvc.ModelBinding;
-using Grand.Web.Models.Newsletter;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 
 namespace Grand.Web.Models.Customer
 {
@@ -15,11 +15,11 @@ namespace Grand.Web.Models.Customer
     {
         public RegisterModel()
         {
-            this.AvailableTimeZones = new List<SelectListItem>();
-            this.AvailableCountries = new List<SelectListItem>();
-            this.AvailableStates = new List<SelectListItem>();
-            this.CustomerAttributes = new List<CustomerAttributeModel>();
-            this.NewsletterCategories = new List<NewsletterSimpleCategory>();
+            AvailableTimeZones = new List<SelectListItem>();
+            AvailableCountries = new List<SelectListItem>();
+            AvailableStates = new List<SelectListItem>();
+            CustomerAttributes = new List<CustomerAttributeModel>();
+            NewsletterCategories = new List<NewsletterSimpleCategory>();
         }
 
         [GrandResourceDisplayName("Account.Fields.Email")]

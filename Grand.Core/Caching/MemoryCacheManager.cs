@@ -5,6 +5,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace Grand.Core.Caching
 {
@@ -141,9 +142,44 @@ namespace Grand.Core.Caching
         /// <typeparam name="T">Type of cached item</typeparam>
         /// <param name="key">Key of cached item</param>
         /// <returns>The cached value associated with the specified key</returns>
-        public virtual T Get<T>(string key)
+        public virtual Task<T> GetAsync<T>(string key)
+        {
+            return Task.FromResult(_cache.Get<T>(key));
+        }
+
+        /// <summary>
+        /// Gets or sets the value associated with the specified key.
+        /// </summary>
+        /// <typeparam name="T">Type of cached item</typeparam>
+        /// <param name="key">Key of cached item</param>
+        /// <returns>The cached value associated with the specified key</returns>
+        public T Get<T>(string key)
         {
             return _cache.Get<T>(key);
+        }
+
+        /// <summary>
+        /// Gets or sets the value associated with the specified key.
+        /// </summary>
+        /// <param name="key">Key of cached item</param>
+        /// <returns>The cached value associated with the specified key</returns>
+        public virtual (T, bool) TryGetValue<T>(string key)
+        {
+            if (_cache.TryGetValue(key, out T value))
+            {
+                return (value, true);
+            }
+            return (default(T), false);
+        }
+
+        /// <summary>
+        /// Gets or sets the value associated with the specified key.
+        /// </summary>
+        /// <param name="key">Key of cached item</param>
+        /// <returns>The cached value associated with the specified key</returns>
+        public Task<(T Result, bool FromCache)> TryGetValueAsync<T>(string key)
+        {
+            return Task.FromResult(TryGetValue<T>(key));
         }
 
         /// <summary>
@@ -152,7 +188,22 @@ namespace Grand.Core.Caching
         /// <param name="key">Key of cached item</param>
         /// <param name="data">Value for caching</param>
         /// <param name="cacheTime">Cache time in minutes</param>
-        public virtual void Set(string key, object data, int cacheTime)
+        public virtual Task SetAsync(string key, object data, int cacheTime)
+        {
+            if (data != null)
+            {
+                _cache.Set(AddKey(key), data, GetMemoryCacheEntryOptions(cacheTime));
+            }
+            return Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// Adds the specified key and object to the cache
+        /// </summary>
+        /// <param name="key">Key of cached item</param>
+        /// <param name="data">Value for caching</param>
+        /// <param name="cacheTime">Cache time in minutes</param>
+        public void Set(string key, object data, int cacheTime)
         {
             if (data != null)
             {
@@ -174,24 +225,34 @@ namespace Grand.Core.Caching
         /// Removes the value with the specified key from the cache
         /// </summary>
         /// <param name="key">Key of cached item</param>
-        public virtual void Remove(string key)
+        public virtual Task RemoveAsync(string key)
         {
             _cache.Remove(RemoveKey(key));
+            return Task.CompletedTask;
         }
 
         /// <summary>
         /// Removes items by key pattern
         /// </summary>
         /// <param name="pattern">String key pattern</param>
-        public virtual void RemoveByPattern(string pattern)
+        public virtual async Task RemoveByPattern(string pattern)
         {
-            this.RemoveByPattern(pattern, _allKeys.Where(p => p.Value).Select(p => p.Key));
+            await this.RemoveByPattern(pattern, _allKeys.Where(p => p.Value).Select(p => p.Key));
+        }
+
+        /// <summary>
+        /// Removes items by key pattern
+        /// </summary>
+        /// <param name="pattern">String key pattern</param>
+        public Task RemoveByPatternAsync(string pattern)
+        {
+            return this.RemoveByPattern(pattern, _allKeys.Where(p => p.Value).Select(p => p.Key));
         }
 
         /// <summary>
         /// Clear all cache data
         /// </summary>
-        public virtual void Clear()
+        public virtual Task Clear()
         {
             //send cancellation request
             _cancellationTokenSource.Cancel();
@@ -201,6 +262,8 @@ namespace Grand.Core.Caching
 
             //recreate cancellation token
             _cancellationTokenSource = new CancellationTokenSource();
+
+            return Task.CompletedTask;
         }
 
         /// <summary>

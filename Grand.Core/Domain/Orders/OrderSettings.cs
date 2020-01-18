@@ -1,5 +1,4 @@
-﻿using System.Collections.Generic;
-using Grand.Core.Configuration;
+﻿using Grand.Core.Configuration;
 
 namespace Grand.Core.Domain.Orders
 {
@@ -24,7 +23,7 @@ namespace Grand.Core.Domain.Orders
         /// Gets or sets a minimum order total amount
         /// </summary>
         public decimal MinOrderTotalAmount { get; set; }
-        
+
         /// <summary>
         /// Gets or sets a value indicating whether anonymous checkout allowed
         /// </summary>
@@ -67,12 +66,15 @@ namespace Grand.Core.Domain.Orders
         /// <summary>
         /// Gets or sets a value indicating we should attach PDF invoice to "Order paid" email
         /// </summary>
-        public bool AttachPdfInvoiceToOrderPaidEmail { get; set; }
+        public bool AttachPdfInvoiceToOrderPaidEmail { get; set; }    
         /// <summary>
         /// Gets or sets a value indicating we should attach PDF invoice to "Order completed" email
         /// </summary>
         public bool AttachPdfInvoiceToOrderCompletedEmail { get; set; }
-        
+        /// <summary>
+        /// Gets or sets a value indicating we should attach PDF invoice to binary field
+        /// </summary>
+        public bool AttachPdfInvoiceToBinary { get; set; }
         /// <summary>
         /// Gets or sets a value indicating whether "Return requests" are allowed
         /// </summary>
@@ -104,9 +106,9 @@ namespace Grand.Core.Domain.Orders
         public int GiftCards_Activated_OrderStatusId { get; set; }
 
         /// <summary>
-        ///  Gift cards are deactivated when the order status is
+        ///  Gift cards are deactivated when the order is canceled
         /// </summary>
-        public int GiftCards_Deactivated_OrderStatusId { get; set; }
+        public bool DeactivateGiftCardsAfterCancelOrder { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether to deactivate related gift cards after deleting the order
@@ -131,5 +133,10 @@ namespace Grand.Core.Domain.Orders
         /// Gets or sets a value indicating whether unpublish auction product after made order.
         /// </summary>
         public bool UnpublishAuctionProduct { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether customers can add order notes
+        /// </summary>
+        public bool AllowCustomerToAddOrderNote { get; set; }
     }
 }

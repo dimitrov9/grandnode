@@ -1,11 +1,11 @@
 ﻿using Grand.Core.Domain.Knowledgebase;
+using Grand.Services.Localization;
 using Grand.Services.Security;
+using Grand.Services.Stores;
 using System;
 using System.Collections.Generic;
-using Grand.Services.Localization;
-using System.Text;
 using System.Linq;
-using Grand.Services.Stores;
+using System.Threading.Tasks;
 
 namespace Grand.Services.Knowledgebase
 {
@@ -84,7 +84,7 @@ namespace Grand.Services.Knowledgebase
         /// <param name="storeMappingService">Store mapping service</param>
         /// <param name="showHidden">A value indicating whether to load hidden records</param>
         /// <returns>Category breadcrumb </returns>
-        public static IList<KnowledgebaseCategory> GetCategoryBreadCrumb(this KnowledgebaseCategory category,
+        public static async Task<IList<KnowledgebaseCategory>> GetCategoryBreadCrumb(this KnowledgebaseCategory category,
             IKnowledgebaseService knowledgebaseService,
             IAclService aclService,
             IStoreMappingService storeMappingService,
@@ -108,7 +108,7 @@ namespace Grand.Services.Knowledgebase
 
                 alreadyProcessedCategoryIds.Add(category.Id);
 
-                category = knowledgebaseService.GetKnowledgebaseCategory(category.ParentCategoryId);
+                category = await knowledgebaseService.GetKnowledgebaseCategory(category.ParentCategoryId);
             }
 
             result.Reverse();

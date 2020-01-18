@@ -1,9 +1,9 @@
-﻿using System.Collections.Generic;
-using Grand.Core.Domain.Catalog;
+﻿using Grand.Core.Domain.Catalog;
+using Grand.Framework.Mvc.Models;
 using Grand.Web.Models.Common;
 using Grand.Web.Models.Media;
-using Grand.Framework.Mvc.Models;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using System.Collections.Generic;
 
 namespace Grand.Web.Models.ShoppingCart
 {
@@ -52,6 +52,7 @@ namespace Grand.Web.Models.ShoppingCart
             {
                 Picture = new PictureModel();
                 AllowedQuantities = new List<SelectListItem>();
+                Discounts = new List<string>();
                 Warnings = new List<string>();
             }
             public string Sku { get; set; }
@@ -59,9 +60,16 @@ namespace Grand.Web.Models.ShoppingCart
             public string ProductId { get; set; }
             public string ProductName { get; set; }
             public string ProductSeName { get; set; }
+            public string WarehouseId { get; set; }
+            public string WarehouseName { get; set; }
+            public string UnitPriceWithoutDiscount { get; set; }
+            public decimal UnitPriceWithoutDiscountValue { get; set; }
             public string UnitPrice { get; set; }
+            public decimal UnitPriceValue { get; set; }
             public string SubTotal { get; set; }
             public string Discount { get; set; }
+            public int DiscountedQty { get; set; }
+            public List<string> Discounts { get; set; }
             public int Quantity { get; set; }
             public List<SelectListItem> AllowedQuantities { get; set; }
             public string AttributeInfo { get; set; }
@@ -72,7 +80,6 @@ namespace Grand.Web.Models.ShoppingCart
             public string AuctionInfo { get; set; }
             public string Parameter { get; set; }
             public IList<string> Warnings { get; set; }
-
         }
 
         public partial class CheckoutAttributeModel : BaseGrandEntityModel
@@ -152,10 +159,9 @@ namespace Grand.Web.Models.ShoppingCart
         {
             public OrderReviewDataModel()
             {
-                this.BillingAddress = new AddressModel();
-                this.ShippingAddress = new AddressModel();
-                this.PickupAddress = new AddressModel();
-                this.CustomValues= new Dictionary<string, object>();
+                BillingAddress = new AddressModel();
+                ShippingAddress = new AddressModel();
+                PickupAddress = new AddressModel();
             }
             public bool Display { get; set; }
 
@@ -170,7 +176,6 @@ namespace Grand.Web.Models.ShoppingCart
 
             public string PaymentMethod { get; set; }
 
-            public Dictionary<string, object> CustomValues { get; set; }
         }
 		#endregion
     }

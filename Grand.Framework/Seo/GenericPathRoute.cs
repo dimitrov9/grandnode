@@ -1,16 +1,17 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Routing;
-using Microsoft.AspNetCore.Routing.Template;
-using Grand.Core;
+﻿using Grand.Core;
 using Grand.Core.Data;
 using Grand.Core.Domain.Localization;
 using Grand.Core.Infrastructure;
-using Grand.Services.Events;
-using Grand.Services.Seo;
 using Grand.Framework.Localization;
+using Grand.Services.Seo;
+using MediatR;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.AspNetCore.Routing.Template;
+using Microsoft.Extensions.DependencyInjection;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Grand.Framework.Seo
 {
@@ -27,7 +28,7 @@ namespace Grand.Framework.Seo
 
         #region Ctor
 
-        public GenericPathRoute(IRouter target, string routeName, string routeTemplate, RouteValueDictionary defaults, 
+        public GenericPathRoute(IRouter target, string routeName, string routeTemplate, RouteValueDictionary defaults,
             IDictionary<string, object> constraints, RouteValueDictionary dataTokens, IInlineConstraintResolver inlineConstraintResolver)
             : base(target, routeName, routeTemplate, defaults, constraints, dataTokens, inlineConstraintResolver)
         {
@@ -43,13 +44,22 @@ namespace Grand.Framework.Seo
         /// </summary>
         /// <param name="context">Route context</param>
         /// <returns>Route values</returns>
-        protected RouteValueDictionary GetRouteValues(RouteContext context)
+        protected async Task<RouteValueDictionary> GetRouteValues(RouteContext context)
         {
-            //remove language code from the path if it's localized URL
             var path = context.HttpContext.Request.Path.Value;
-            if (this.SeoFriendlyUrlsForLanguagesEnabled && path.IsLocalizedUrl(context.HttpContext.Request.PathBase, false, out Language language))
-                path = path.RemoveLanguageSeoCodeFromUrl(context.HttpContext.Request.PathBase, false);
+            if (SeoFriendlyUrlsForPathEnabled(context.HttpContext) && !SeoFriendlyUrlsForLanguagesEnabled(context.HttpContext))
+            {
+                string lastpath = path.Split('/').Where(x => !string.IsNullOrEmpty(x)).LastOrDefault();
+                path = $"/{lastpath}";
+            }
 
+            //remove language code from the path if it's localized URL
+            if (SeoFriendlyUrlsForLanguagesEnabled(context.HttpContext))
+            {
+                await PrepareLanguages(context.HttpContext);
+                if (path.IsLocalizedUrl(context.HttpContext.Request.PathBase, false, await LanguagesAsync(context.HttpContext), out Language language))
+                    path = path.RemoveLanguageSeoCodeFromUrl(context.HttpContext.Request.PathBase, false);
+            }
             //parse route data
             var routeValues = new RouteValueDictionary(this.ParsedTemplate.Parameters
                 .Where(parameter => parameter.DefaultValue != null)
@@ -69,35 +79,34 @@ namespace Grand.Framework.Seo
         /// </summary>
         /// <param name="context">A route context object</param>
         /// <returns>Task of the routing</returns>
-        public override Task RouteAsync(RouteContext context)
+        public override async Task RouteAsync(RouteContext context)
         {
             if (!DataSettingsHelper.DatabaseIsInstalled())
-                return Task.CompletedTask;
+                return;
 
             //try to get slug from the route data
-            var routeValues = GetRouteValues(context);
+            var routeValues = await GetRouteValues(context);
             if (!routeValues.TryGetValue("GenericSeName", out object slugValue) || string.IsNullOrEmpty(slugValue as string))
-                return Task.CompletedTask;
+                return;
 
             var slug = slugValue as string;
 
             //virtual directory path
             var pathBase = context.HttpContext.Request.PathBase;
-
             //performance optimization, we load a cached verion here. It reduces number of SQL requests for each page load
-            var urlRecordService = EngineContext.Current.Resolve<IUrlRecordService>();
-            var urlRecord = urlRecordService.GetBySlugCached(slug);
+            var urlRecordService = context.HttpContext.RequestServices.GetRequiredService<IUrlRecordService>();
+            var urlRecord = await urlRecordService.GetBySlugCached(slug);
 
             //no URL record found
             if (urlRecord == null)
-                return Task.CompletedTask;
+                return;
 
             //if URL record is not active let's find the latest one
             if (!urlRecord.IsActive)
             {
-                var activeSlug = urlRecordService.GetActiveSlug(urlRecord.EntityId, urlRecord.EntityName, urlRecord.LanguageId);
+                var activeSlug = await urlRecordService.GetActiveSlug(urlRecord.EntityId, urlRecord.EntityName, urlRecord.LanguageId);
                 if (string.IsNullOrEmpty(activeSlug))
-                    return Task.CompletedTask;
+                    return;
 
                 //redirect to active slug if found
                 var redirectionRouteData = new RouteData(context.RouteData);
@@ -107,13 +116,14 @@ namespace Grand.Framework.Seo
                 redirectionRouteData.Values["permanentRedirect"] = true;
                 context.HttpContext.Items["grand.RedirectFromGenericPathRoute"] = true;
                 context.RouteData = redirectionRouteData;
-                return _target.RouteAsync(context);
+                await _target.RouteAsync(context);
+                return;
             }
 
             //ensure that the slug is the same for the current language, 
             //otherwise it can cause some issues when customers choose a new language but a slug stays the same
-            var workContext = EngineContext.Current.Resolve<IWorkContext>();
-            var slugForCurrentLanguage = SeoExtensions.GetSeName(urlRecord.EntityId, urlRecord.EntityName, workContext.WorkingLanguage.Id);
+            var workContext = context.HttpContext.RequestServices.GetRequiredService<IWorkContext>();
+            var slugForCurrentLanguage = await SeoExtensions.GetSeName(urlRecordService, context.HttpContext, urlRecord.EntityId, urlRecord.EntityName, workContext.WorkingLanguage.Id);
             if (!string.IsNullOrEmpty(slugForCurrentLanguage) && !slugForCurrentLanguage.Equals(slug, StringComparison.OrdinalIgnoreCase))
             {
                 //we should make validation above because some entities does not have SeName for standard (Id = 0) language (e.g. news, blog posts)
@@ -126,7 +136,8 @@ namespace Grand.Framework.Seo
                 redirectionRouteData.Values["permanentRedirect"] = false;
                 context.HttpContext.Items["grand.RedirectFromGenericPathRoute"] = true;
                 context.RouteData = redirectionRouteData;
-                return _target.RouteAsync(context);
+                await _target.RouteAsync(context);
+                return;
             }
 
             //since we are here, all is ok with the slug, so process URL
@@ -187,15 +198,21 @@ namespace Grand.Framework.Seo
                     currentRouteData.Values["categoryId"] = urlRecord.EntityId;
                     currentRouteData.Values["SeName"] = urlRecord.Slug;
                     break;
+                case "course":
+                    currentRouteData.Values["controller"] = "Course";
+                    currentRouteData.Values["action"] = "Details";
+                    currentRouteData.Values["courseId"] = urlRecord.EntityId;
+                    currentRouteData.Values["SeName"] = urlRecord.Slug;
+                    break;
                 default:
                     //no record found, thus generate an event this way developers could insert their own types
-                    EngineContext.Current.Resolve<IEventPublisher>().Publish(new CustomUrlRecordEntityNameRequested(currentRouteData, urlRecord));
+                    await context.HttpContext.RequestServices.GetRequiredService<IMediator>().Publish(new CustomUrlRecordEntityNameRequested(currentRouteData, urlRecord));
                     break;
             }
             context.RouteData = currentRouteData;
 
             //route request
-            return _target.RouteAsync(context);
+            await _target.RouteAsync(context);
         }
 
         #endregion

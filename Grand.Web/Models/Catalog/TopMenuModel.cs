@@ -1,5 +1,5 @@
-﻿using System.Collections.Generic;
-using Grand.Framework.Mvc.Models;
+﻿using Grand.Framework.Mvc.Models;
+using System.Collections.Generic;
 
 namespace Grand.Web.Models.Catalog
 {
@@ -39,6 +39,7 @@ namespace Grand.Web.Models.Catalog
         public class TopMenuManufacturerModel : BaseGrandEntityModel
         {
             public string Name { get; set; }
+            public string Icon { get; set; }
             public string SeName { get; set; }
         }
 

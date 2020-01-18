@@ -13,7 +13,7 @@
     @if (!String.IsNullOrEmpty(Model.Result))
     {
         <div class="result">
-            <div class="result card bg-info p-3 text-white">@Html.Raw(Model.Result)</div>
+            <div class="result card bg-info p-3 text-white d-flex justify-content-center align-items-center">@Html.Raw(Model.Result)</div>
         </div>
     }
     else
@@ -158,7 +158,7 @@
                                     <div asp-validation-summary="ModelOnly" class="message-error"></div>
                                     @{
                                         var dataDictAddress = new ViewDataDictionary(ViewData);
-                                        dataDictAddress.TemplateInfo.HtmlFieldPrefix = "NewAddress";
+                                        dataDictAddress.TemplateInfo.HtmlFieldPrefix = "ReturnRequestNewAddress";
                                         <partial name="_CreateOrUpdateAddress" model="Model.NewAddress" view-data="dataDictAddress" />
                                     }
                                 </div>
@@ -174,15 +174,15 @@
                     </div>
                 }
             </div>
-            <div class="col-12 btn-group mt-1 mb-1">
-                <div class="row">
+            <div class="row">
+                <div class="col-12 btn-group mt-1 mb-1">
                     <input type="submit" name="submit-return-request" class="btn btn-secondary submit-return-request-button" value="@T("ReturnRequests.Submit")" />
                 </div>
             </div>
         </form>
     }
 </div>
-<script>
+<script asp-location="Footer">
     $(document).ready(function () {
         if ($("#pickup-address-select option:selected").val() != "") {
             newAddress(false);

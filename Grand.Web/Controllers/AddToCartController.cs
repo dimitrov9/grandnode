@@ -1,30 +1,21 @@
 ﻿using Grand.Core;
-using Grand.Core.Caching;
 using Grand.Core.Domain.Catalog;
 using Grand.Core.Domain.Customers;
-using Grand.Core.Domain.Media;
 using Grand.Core.Domain.Orders;
-using Grand.Framework.Mvc;
 using Grand.Services.Catalog;
 using Grand.Services.Directory;
-using Grand.Services.Discounts;
 using Grand.Services.Localization;
 using Grand.Services.Logging;
-using Grand.Services.Media;
 using Grand.Services.Orders;
-using Grand.Services.Security;
 using Grand.Services.Seo;
-using Grand.Services.Tax;
-using Grand.Web.Infrastructure.Cache;
-using Grand.Web.Models.Media;
-using Grand.Web.Services;
+using Grand.Web.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace Grand.Web.Controllers
 {
@@ -39,17 +30,8 @@ namespace Grand.Web.Controllers
         private readonly IWorkContext _workContext;
         private readonly IStoreContext _storeContext;
         private readonly ILocalizationService _localizationService;
-        private readonly IWebHelper _webHelper;
         private readonly ICurrencyService _currencyService;
-        private readonly IPermissionService _permissionService;
         private readonly ICustomerActivityService _customerActivityService;
-        private readonly ICacheManager _cacheManager;
-        private readonly ITaxService _taxService;
-        private readonly IProductAttributeParser _productAttributeParser;
-        private readonly IPriceCalculationService _priceCalculationService;
-        private readonly IPriceFormatter _priceFormatter;
-        private readonly IPictureService _pictureService;
-        private readonly MediaSettings _mediaSettings;
         private readonly ShoppingCartSettings _shoppingCartSettings;
 
         #endregion
@@ -63,38 +45,20 @@ namespace Grand.Web.Controllers
             IWorkContext workContext,
             IStoreContext storeContext,
             ILocalizationService localizationService,
-            IWebHelper webHelper,
             ICurrencyService currencyService,
-            IPermissionService permissionService,
             ICustomerActivityService customerActivityService,
-            ICacheManager cacheManager,
-            ITaxService taxService,
-            IProductAttributeParser productAttributeParser,
-            IPriceCalculationService priceCalculationService,
-            IPriceFormatter priceFormatter,
-            IPictureService pictureService,
-            ShoppingCartSettings shoppingCartSettings,
-            MediaSettings mediaSettings)
+            ShoppingCartSettings shoppingCartSettings)
         {
-            this._productService = productService;
-            this._productReservationService = productReservationService;
-            this._shoppingCartService = shoppingCartService;
-            this._shoppingCartViewModelService = shoppingCartViewModelService;
-            this._workContext = workContext;
-            this._storeContext = storeContext;
-            this._localizationService = localizationService;
-            this._webHelper = webHelper;
-            this._currencyService = currencyService;
-            this._permissionService = permissionService;
-            this._customerActivityService = customerActivityService;
-            this._cacheManager = cacheManager;
-            this._taxService = taxService;
-            this._productAttributeParser = productAttributeParser;
-            this._priceCalculationService = priceCalculationService;
-            this._priceFormatter = priceFormatter;
-            this._pictureService = pictureService;
-            this._mediaSettings = mediaSettings;
-            this._shoppingCartSettings = shoppingCartSettings;
+            _productService = productService;
+            _productReservationService = productReservationService;
+            _shoppingCartService = shoppingCartService;
+            _shoppingCartViewModelService = shoppingCartViewModelService;
+            _workContext = workContext;
+            _storeContext = storeContext;
+            _localizationService = localizationService;
+            _currencyService = currencyService;
+            _customerActivityService = customerActivityService;
+            _shoppingCartSettings = shoppingCartSettings;
         }
 
         #endregion
@@ -105,12 +69,12 @@ namespace Grand.Web.Controllers
         //add product to cart using AJAX
         //currently we use this method on catalog pages (category/manufacturer/etc)
         [HttpPost]
-        public virtual IActionResult AddProductToCart_Catalog(string productId, int shoppingCartTypeId,
+        public virtual async Task<IActionResult> AddProductToCart_Catalog(string productId, int shoppingCartTypeId,
             int quantity, bool forceredirection = false)
         {
             var cartType = (ShoppingCartType)shoppingCartTypeId;
 
-            var product = _productService.GetProductById(productId);
+            var product = await _productService.GetProductById(productId);
             if (product == null)
                 //no product found
                 return Json(new
@@ -119,12 +83,12 @@ namespace Grand.Web.Controllers
                     message = "No product found with the specified ID"
                 });
 
-            //we can add only simple products
-            if (product.ProductType != ProductType.SimpleProduct)
+            //we can add only simple products and 
+            if (product.ProductType != ProductType.SimpleProduct || _shoppingCartSettings.AllowToSelectWarehouse)
             {
                 return Json(new
                 {
-                    redirect = Url.RouteUrl("Product", new { SeName = product.GetSeName() }),
+                    redirect = Url.RouteUrl("Product", new { SeName = product.GetSeName(_workContext.WorkingLanguage.Id) }),
                 });
             }
 
@@ -135,7 +99,7 @@ namespace Grand.Web.Controllers
                 //it can confuse customers. That's why we redirect customers to the product details page
                 return Json(new
                 {
-                    redirect = Url.RouteUrl("Product", new { SeName = product.GetSeName() }),
+                    redirect = Url.RouteUrl("Product", new { SeName = product.GetSeName(_workContext.WorkingLanguage.Id) }),
                 });
             }
 
@@ -144,7 +108,7 @@ namespace Grand.Web.Controllers
                 //cannot be added to the cart (requires a customer to enter price)
                 return Json(new
                 {
-                    redirect = Url.RouteUrl("Product", new { SeName = product.GetSeName() }),
+                    redirect = Url.RouteUrl("Product", new { SeName = product.GetSeName(_workContext.WorkingLanguage.Id) }),
                 });
             }
 
@@ -155,7 +119,7 @@ namespace Grand.Web.Controllers
                 //cannot be added to the cart (requires a customer to select a quantity from dropdownlist)
                 return Json(new
                 {
-                    redirect = Url.RouteUrl("Product", new { SeName = product.GetSeName() }),
+                    redirect = Url.RouteUrl("Product", new { SeName = product.GetSeName(_workContext.WorkingLanguage.Id) }),
                 });
             }
 
@@ -164,27 +128,28 @@ namespace Grand.Web.Controllers
                 //product has some attributes. let a customer see them
                 return Json(new
                 {
-                    redirect = Url.RouteUrl("Product", new { SeName = product.GetSeName() }),
+                    redirect = Url.RouteUrl("Product", new { SeName = product.GetSeName(_workContext.WorkingLanguage.Id) }),
                 });
             }
 
             var customer = _workContext.CurrentCustomer;
 
+            string warehouseId = 
+               product.UseMultipleWarehouses ? _storeContext.CurrentStore.DefaultWarehouseId :
+               (string.IsNullOrEmpty(_storeContext.CurrentStore.DefaultWarehouseId) ? product.WarehouseId : _storeContext.CurrentStore.DefaultWarehouseId);
+
             //get standard warnings without attribute validations
             //first, try to find existing shopping cart item
-            var cart = customer.ShoppingCartItems
-                .Where(sci => sci.ShoppingCartType == cartType)
-                .LimitPerStore(_storeContext.CurrentStore.Id)
-                .ToList();
-            var shoppingCartItem = _shoppingCartService.FindShoppingCartItemInTheCart(cart, cartType, product.Id);
+            var cart = _shoppingCartService.GetShoppingCart(_storeContext.CurrentStore.Id, cartType);
+            var shoppingCartItem = await _shoppingCartService.FindShoppingCartItemInTheCart(cart, cartType, product.Id, warehouseId);
             //if we already have the same product in the cart, then use the total quantity to validate
             var quantityToValidate = shoppingCartItem != null ? shoppingCartItem.Quantity + quantity : quantity;
-            var addToCartWarnings = _shoppingCartService
-                .GetShoppingCartItemWarnings(customer, new ShoppingCartItem()
-                {
+            var addToCartWarnings = await _shoppingCartService
+                .GetShoppingCartItemWarnings(customer, new ShoppingCartItem() {
                     ShoppingCartType = cartType,
                     StoreId = _storeContext.CurrentStore.Id,
                     CustomerEnteredPrice = decimal.Zero,
+                    WarehouseId = warehouseId,
                     Quantity = quantityToValidate
                 },
                 product, false);
@@ -193,15 +158,16 @@ namespace Grand.Web.Controllers
                 //cannot be added to the cart
                 return Json(new
                 {
-                    redirect = Url.RouteUrl("Product", new { SeName = product.GetSeName() }),
+                    redirect = Url.RouteUrl("Product", new { SeName = product.GetSeName(_workContext.WorkingLanguage.Id) }),
                 });
             }
 
             //now let's try adding product to the cart (now including product attribute validation, etc)
-            addToCartWarnings = _shoppingCartService.AddToCart(customer: customer,
+            addToCartWarnings = await _shoppingCartService.AddToCart(customer: customer,
                 productId: productId,
                 shoppingCartType: cartType,
                 storeId: _storeContext.CurrentStore.Id,
+                warehouseId: warehouseId,
                 quantity: quantity);
             if (addToCartWarnings.Any())
             {
@@ -209,11 +175,11 @@ namespace Grand.Web.Controllers
                 //but we do not display attribute and gift card warnings here. let's do it on the product details page
                 return Json(new
                 {
-                    redirect = Url.RouteUrl("Product", new { SeName = product.GetSeName() }),
+                    redirect = Url.RouteUrl("Product", new { SeName = product.GetSeName(_workContext.WorkingLanguage.Id) }),
                 });
             }
 
-            var addtoCartModel = _shoppingCartViewModelService.PrepareAddToCartModel(product, customer, quantity, 0, "", cartType, null, null, "", "", "");
+            var addtoCartModel = await _shoppingCartViewModelService.PrepareAddToCartModel(product, customer, quantity, 0, "", cartType, null, null, "", "", "");
 
             //added to the cart/wishlist
             switch (cartType)
@@ -221,7 +187,7 @@ namespace Grand.Web.Controllers
                 case ShoppingCartType.Wishlist:
                     {
                         //activity log
-                        _customerActivityService.InsertActivity("PublicStore.AddToWishlist", product.Id, _localizationService.GetResource("ActivityLog.PublicStore.AddToWishlist"), product.Name);
+                        await _customerActivityService.InsertActivity("PublicStore.AddToWishlist", product.Id, _localizationService.GetResource("ActivityLog.PublicStore.AddToWishlist"), product.Name);
 
                         if (_shoppingCartSettings.DisplayWishlistAfterAddingProduct || forceredirection)
                         {
@@ -234,16 +200,14 @@ namespace Grand.Web.Controllers
 
                         //display notification message and update appropriate blocks
                         var updatetopwishlistsectionhtml = string.Format(_localizationService.GetResource("Wishlist.HeaderQuantity"),
-                        customer.ShoppingCartItems
-                        .Where(sci => sci.ShoppingCartType == ShoppingCartType.Wishlist)
-                        .LimitPerStore(_storeContext.CurrentStore.Id)
-                        .Sum(x => x.Quantity));
+                            _shoppingCartService.GetShoppingCart(_storeContext.CurrentStore.Id, ShoppingCartType.Wishlist)
+                                .Sum(x => x.Quantity));
 
                         return Json(new
                         {
                             success = true,
                             message = string.Format(_localizationService.GetResource("Products.ProductHasBeenAddedToTheWishlist.Link"), Url.RouteUrl("Wishlist")),
-                            html = this.RenderPartialViewToString("_AddToCart", addtoCartModel),
+                            html = await RenderPartialViewToString("_PopupAddToCart", addtoCartModel),
                             updatetopwishlistsectionhtml = updatetopwishlistsectionhtml,
                         });
                     }
@@ -251,7 +215,7 @@ namespace Grand.Web.Controllers
                 default:
                     {
                         //activity log
-                        _customerActivityService.InsertActivity("PublicStore.AddToShoppingCart", product.Id, _localizationService.GetResource("ActivityLog.PublicStore.AddToShoppingCart"), product.Name);
+                        await _customerActivityService.InsertActivity("PublicStore.AddToShoppingCart", product.Id, _localizationService.GetResource("ActivityLog.PublicStore.AddToShoppingCart"), product.Name);
 
                         if (_shoppingCartSettings.DisplayCartAfterAddingProduct || forceredirection)
                         {
@@ -264,10 +228,8 @@ namespace Grand.Web.Controllers
 
                         //display notification message and update appropriate blocks
                         var updatetopcartsectionhtml = string.Format(_localizationService.GetResource("ShoppingCart.HeaderQuantity"),
-                        customer.ShoppingCartItems
-                        .Where(sci => sci.ShoppingCartType == ShoppingCartType.ShoppingCart)
-                        .LimitPerStore(_storeContext.CurrentStore.Id)
-                        .Sum(x => x.Quantity));
+                            _shoppingCartService.GetShoppingCart(_storeContext.CurrentStore.Id, ShoppingCartType.ShoppingCart)
+                                .Sum(x => x.Quantity));
 
                         var updateflyoutcartsectionhtml = _shoppingCartSettings.MiniShoppingCartEnabled
                             ? this.RenderViewComponentToString("FlyoutShoppingCart")
@@ -277,7 +239,7 @@ namespace Grand.Web.Controllers
                         {
                             success = true,
                             message = string.Format(_localizationService.GetResource("Products.ProductHasBeenAddedToTheCart.Link"), Url.RouteUrl("ShoppingCart")),
-                            html = this.RenderPartialViewToString("_AddToCart", addtoCartModel),
+                            html = await RenderPartialViewToString("_PopupAddToCart", addtoCartModel),
                             updatetopcartsectionhtml = updatetopcartsectionhtml,
                             updateflyoutcartsectionhtml = updateflyoutcartsectionhtml
                         });
@@ -288,9 +250,9 @@ namespace Grand.Web.Controllers
         //add product to cart using AJAX
         //currently we use this method on the product details pages
         [HttpPost]
-        public virtual IActionResult AddProductToCart_Details(string productId, int shoppingCartTypeId, IFormCollection form)
+        public virtual async Task<IActionResult> AddProductToCart_Details(string productId, int shoppingCartTypeId, IFormCollection form)
         {
-            var product = _productService.GetProductById(productId);
+            var product = await _productService.GetProductById(productId);
             if (product == null)
             {
                 return Json(new
@@ -337,13 +299,11 @@ namespace Grand.Web.Controllers
                     updatecartitemid = form[formKey];
                     break;
                 }
+
             ShoppingCartItem updatecartitem = null;
-            if (_shoppingCartSettings.AllowCartItemEditing && !String.IsNullOrEmpty(updatecartitemid))
+            if (_shoppingCartSettings.AllowCartItemEditing && !string.IsNullOrEmpty(updatecartitemid))
             {
-                var cart = _workContext.CurrentCustomer.ShoppingCartItems
-                    .Where(x => x.ShoppingCartTypeId == shoppingCartTypeId)
-                    .LimitPerStore(_storeContext.CurrentStore.Id)
-                    .ToList();
+                var cart = _shoppingCartService.GetShoppingCart(_storeContext.CurrentStore.Id, (ShoppingCartType)shoppingCartTypeId);
                 updatecartitem = cart.FirstOrDefault(x => x.Id == updatecartitemid);
 
                 //is it this product?
@@ -367,7 +327,7 @@ namespace Grand.Web.Controllers
                     if (formKey.Equals(string.Format("addtocart_{0}.CustomerEnteredPrice", productId), StringComparison.OrdinalIgnoreCase))
                     {
                         if (decimal.TryParse(form[formKey], out decimal customerEnteredPrice))
-                            customerEnteredPriceConverted = _currencyService.ConvertToPrimaryStoreCurrency(customerEnteredPrice, _workContext.WorkingCurrency);
+                            customerEnteredPriceConverted = await _currencyService.ConvertToPrimaryStoreCurrency(customerEnteredPrice, _workContext.WorkingCurrency);
                         break;
                     }
                 }
@@ -387,7 +347,7 @@ namespace Grand.Web.Controllers
             #endregion
 
             //product and gift card attributes
-            string attributes = _shoppingCartViewModelService.ParseProductAttributes(product, form);
+            string attributes = await _shoppingCartViewModelService.ParseProductAttributes(product, form);
 
             //rental attributes
             DateTime? rentalStartDate = null;
@@ -422,7 +382,7 @@ namespace Grand.Web.Controllers
                             message = _localizationService.GetResource("Product.Addtocart.Reservation.Required")
                         });
                     }
-                    var reservation = _productReservationService.GetProductReservation(reservationId);
+                    var reservation = await _productReservationService.GetProductReservation(reservationId);
                     if (reservation == null)
                     {
                         return Json(new
@@ -481,22 +441,24 @@ namespace Grand.Web.Controllers
                 });
             }
 
+            string warehouseId = _shoppingCartSettings.AllowToSelectWarehouse ?
+                form["WarehouseId"].ToString() :
+                product.UseMultipleWarehouses ? _storeContext.CurrentStore.DefaultWarehouseId : 
+                (string.IsNullOrEmpty(_storeContext.CurrentStore.DefaultWarehouseId) ? product.WarehouseId : _storeContext.CurrentStore.DefaultWarehouseId);
+
             if (updatecartitem == null)
             {
                 //add to the cart
-                addToCartWarnings.AddRange(_shoppingCartService.AddToCart(_workContext.CurrentCustomer,
-                    productId, cartType, _storeContext.CurrentStore.Id,
+                addToCartWarnings.AddRange(await _shoppingCartService.AddToCart(_workContext.CurrentCustomer,
+                    productId, cartType, _storeContext.CurrentStore.Id, warehouseId,
                     attributes, customerEnteredPriceConverted,
                     rentalStartDate, rentalEndDate, quantity, true, reservationId, parameter, duration));
             }
             else
             {
-                var cart = _workContext.CurrentCustomer.ShoppingCartItems
-                    .Where(x => x.ShoppingCartType == updatecartitem.ShoppingCartType)
-                    .LimitPerStore(_storeContext.CurrentStore.Id)
-                    .ToList();
-                var otherCartItemWithSameParameters = _shoppingCartService.FindShoppingCartItemInTheCart(
-                    cart, updatecartitem.ShoppingCartType, productId, attributes, customerEnteredPriceConverted,
+                var cart = _shoppingCartService.GetShoppingCart(_storeContext.CurrentStore.Id, (ShoppingCartType)shoppingCartTypeId);
+                var otherCartItemWithSameParameters = await _shoppingCartService.FindShoppingCartItemInTheCart(
+                    cart, updatecartitem.ShoppingCartType, productId, warehouseId, attributes, customerEnteredPriceConverted,
                     rentalStartDate, rentalEndDate);
                 if (otherCartItemWithSameParameters != null &&
                     otherCartItemWithSameParameters.Id == updatecartitem.Id)
@@ -505,13 +467,13 @@ namespace Grand.Web.Controllers
                     otherCartItemWithSameParameters = null;
                 }
                 //update existing item
-                addToCartWarnings.AddRange(_shoppingCartService.UpdateShoppingCartItem(_workContext.CurrentCustomer,
-                    updatecartitem.Id, attributes, customerEnteredPriceConverted,
+                addToCartWarnings.AddRange(await _shoppingCartService.UpdateShoppingCartItem(_workContext.CurrentCustomer,
+                    updatecartitem.Id, warehouseId, attributes, customerEnteredPriceConverted,
                     rentalStartDate, rentalEndDate, quantity, true));
                 if (otherCartItemWithSameParameters != null && !addToCartWarnings.Any())
                 {
                     //delete the same shopping cart item (the other one)
-                    _shoppingCartService.DeleteShoppingCartItem(_workContext.CurrentCustomer.Id, otherCartItemWithSameParameters);
+                    await _shoppingCartService.DeleteShoppingCartItem(_workContext.CurrentCustomer, otherCartItemWithSameParameters);
                 }
             }
 
@@ -528,7 +490,7 @@ namespace Grand.Web.Controllers
                 });
             }
 
-            var addtoCartModel = _shoppingCartViewModelService.PrepareAddToCartModel(product, _workContext.CurrentCustomer, quantity, customerEnteredPriceConverted, attributes, cartType, rentalStartDate, rentalEndDate, reservationId, parameter, duration);
+            var addtoCartModel = await _shoppingCartViewModelService.PrepareAddToCartModel(product, _workContext.CurrentCustomer, quantity, customerEnteredPriceConverted, attributes, cartType, rentalStartDate, rentalEndDate, reservationId, parameter, duration);
 
             //added to the cart/wishlist
             switch (cartType)
@@ -536,7 +498,7 @@ namespace Grand.Web.Controllers
                 case ShoppingCartType.Wishlist:
                     {
                         //activity log
-                        _customerActivityService.InsertActivity("PublicStore.AddToWishlist", product.Id, _localizationService.GetResource("ActivityLog.PublicStore.AddToWishlist"), product.Name);
+                        await _customerActivityService.InsertActivity("PublicStore.AddToWishlist", product.Id, _localizationService.GetResource("ActivityLog.PublicStore.AddToWishlist"), product.Name);
 
                         if (_shoppingCartSettings.DisplayWishlistAfterAddingProduct)
                         {
@@ -549,24 +511,22 @@ namespace Grand.Web.Controllers
 
                         //display notification message and update appropriate blocks
                         var updatetopwishlistsectionhtml = string.Format(_localizationService.GetResource("Wishlist.HeaderQuantity"),
-                        _workContext.CurrentCustomer.ShoppingCartItems
-                        .Where(sci => sci.ShoppingCartType == ShoppingCartType.Wishlist)
-                        .LimitPerStore(_storeContext.CurrentStore.Id)
-                        .Sum(x => x.Quantity));
+                            _shoppingCartService.GetShoppingCart(_storeContext.CurrentStore.Id, ShoppingCartType.Wishlist)
+                                .Sum(x => x.Quantity));
 
                         return Json(new
                         {
                             success = true,
                             message = string.Format(_localizationService.GetResource("Products.ProductHasBeenAddedToTheWishlist.Link"), Url.RouteUrl("Wishlist")),
                             updatetopwishlistsectionhtml = updatetopwishlistsectionhtml,
-                            html = this.RenderPartialViewToString("_AddToCart", addtoCartModel),
+                            html = await RenderPartialViewToString("_PopupAddToCart", addtoCartModel),
                         });
                     }
                 case ShoppingCartType.ShoppingCart:
                 default:
                     {
                         //activity log
-                        _customerActivityService.InsertActivity("PublicStore.AddToShoppingCart", product.Id, _localizationService.GetResource("ActivityLog.PublicStore.AddToShoppingCart"), product.Name);
+                        await _customerActivityService.InsertActivity("PublicStore.AddToShoppingCart", product.Id, _localizationService.GetResource("ActivityLog.PublicStore.AddToShoppingCart"), product.Name);
 
                         if (_shoppingCartSettings.DisplayCartAfterAddingProduct)
                         {
@@ -579,10 +539,8 @@ namespace Grand.Web.Controllers
 
                         //display notification message and update appropriate blocks
                         var updatetopcartsectionhtml = string.Format(_localizationService.GetResource("ShoppingCart.HeaderQuantity"),
-                        _workContext.CurrentCustomer.ShoppingCartItems
-                        .Where(sci => sci.ShoppingCartType == ShoppingCartType.ShoppingCart)
-                        .LimitPerStore(_storeContext.CurrentStore.Id)
-                        .Sum(x => x.Quantity));
+                            _shoppingCartService.GetShoppingCart(_storeContext.CurrentStore.Id, ShoppingCartType.ShoppingCart)
+                                .Sum(x => x.Quantity));
 
                         var updateflyoutcartsectionhtml = _shoppingCartSettings.MiniShoppingCartEnabled
                             ? this.RenderViewComponentToString("FlyoutShoppingCart")
@@ -592,7 +550,7 @@ namespace Grand.Web.Controllers
                         {
                             success = true,
                             message = string.Format(_localizationService.GetResource("Products.ProductHasBeenAddedToTheCart.Link"), Url.RouteUrl("ShoppingCart")),
-                            html = this.RenderPartialViewToString("_AddToCart", addtoCartModel),
+                            html = await RenderPartialViewToString("_PopupAddToCart", addtoCartModel),
                             updatetopcartsectionhtml = updatetopcartsectionhtml,
                             updateflyoutcartsectionhtml = updateflyoutcartsectionhtml,
                             refreshreservation = product.ProductType == ProductType.Reservation && product.IntervalUnitType != IntervalUnit.Day
@@ -605,7 +563,7 @@ namespace Grand.Web.Controllers
         }
 
         [HttpPost]
-        public virtual IActionResult AddBid(string productId, int shoppingCartTypeId, IFormCollection form,
+        public virtual async Task<IActionResult> AddBid(string productId, int shoppingCartTypeId, IFormCollection form,
             [FromServices] IAuctionService auctionService)
         {
             var customer = _workContext.CurrentCustomer;
@@ -639,7 +597,7 @@ namespace Grand.Web.Controllers
                 });
             }
 
-            Product product = _productService.GetProductById(productId);
+            Product product = await _productService.GetProductById(productId);
             if (product == null)
                 throw new ArgumentNullException("product");
 
@@ -652,7 +610,20 @@ namespace Grand.Web.Controllers
                 });
             }
 
-            var warnings = _shoppingCartService.GetStandardWarnings(customer, ShoppingCartType.Auctions, product, "", bid, 1).ToList();
+            var warehouseId = _shoppingCartSettings.AllowToSelectWarehouse ? form["WarehouseId"].ToString() : _storeContext.CurrentStore.DefaultWarehouseId;
+
+            var shoppingCartItem = new ShoppingCartItem {
+                AttributesXml = "",
+                CreatedOnUtc = DateTime.UtcNow,
+                ProductId = product.Id,
+                WarehouseId = warehouseId,
+                ShoppingCartType = ShoppingCartType.Auctions,
+                StoreId = _storeContext.CurrentStore.Id,
+                CustomerEnteredPrice = bid,
+                Quantity = 1
+            };
+
+            var warnings = (await _shoppingCartService.GetStandardWarnings(customer, product, shoppingCartItem)).ToList();
             warnings.AddRange(_shoppingCartService.GetAuctionProductWarning(bid, product, customer));
 
             if (warnings.Any())
@@ -671,22 +642,22 @@ namespace Grand.Web.Controllers
             }
 
             //insert new bid
-            auctionService.NewBid(customer, product, _storeContext.CurrentStore, _workContext.WorkingLanguage, bid);
+            await auctionService.NewBid(customer, product, _storeContext.CurrentStore, _workContext.WorkingLanguage, warehouseId, bid);
 
             //activity log
-            _customerActivityService.InsertActivity("PublicStore.AddNewBid", product.Id, _localizationService.GetResource("ActivityLog.PublicStore.AddToBid"), product.Name);
+            await _customerActivityService.InsertActivity("PublicStore.AddNewBid", product.Id, _localizationService.GetResource("ActivityLog.PublicStore.AddToBid"), product.Name);
 
-            var addtoCartModel = _shoppingCartViewModelService.PrepareAddToCartModel(product, customer, 1, 0, "", ShoppingCartType.Auctions, null, null, "", "", "");
+            var addtoCartModel = await _shoppingCartViewModelService.PrepareAddToCartModel(product, customer, 1, 0, "", ShoppingCartType.Auctions, null, null, "", "", "");
 
             return Json(new
             {
                 success = true,
                 message = _localizationService.GetResource("ShoppingCart.Yourbidhasbeenplaced"),
-                html = this.RenderPartialViewToString("_AddToCart", addtoCartModel)
+                html = await RenderPartialViewToString("_PopupAddToCart", addtoCartModel)
             });
         }
 
-        
+
         #endregion
 
     }

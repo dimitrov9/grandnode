@@ -1,23 +1,24 @@
-﻿using System;
+﻿using Grand.Core;
+using Grand.Core.Caching;
+using Grand.Core.Configuration;
+using Grand.Core.Data;
+using Grand.Core.Plugins;
+using Grand.Framework.Security;
+using Grand.Services.Installation;
+using Grand.Services.Logging;
+using Grand.Services.Security;
+using Grand.Web.Infrastructure.Installation;
+using Grand.Web.Models.Install;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.Extensions.DependencyInjection;
+using MongoDB.Bson;
+using MongoDB.Driver;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Principal;
-using Microsoft.AspNetCore.Mvc;
-using Grand.Core;
-using Grand.Core.Data;
-using Grand.Core.Configuration;
-using Grand.Core.Infrastructure;
-using Grand.Core.Plugins;
-using Grand.Services.Installation;
-using Grand.Services.Security;
-using Grand.Framework.Security;
-using Grand.Web.Infrastructure.Installation;
-using Grand.Web.Models.Install;
-using MongoDB.Driver;
-using MongoDB.Bson;
-using Microsoft.AspNetCore.Mvc.Rendering;
-using Grand.Core.Caching;
-using Grand.Services.Logging;
+using System.Threading.Tasks;
 
 namespace Grand.Web.Controllers
 {
@@ -28,16 +29,19 @@ namespace Grand.Web.Controllers
         private readonly IInstallationLocalizationService _locService;
         private readonly GrandConfig _config;
         private readonly ICacheManager _cacheManager;
+        private readonly IServiceProvider _serviceProvider;
 
         #endregion
 
         #region Ctor
 
-        public InstallController(IInstallationLocalizationService locService, GrandConfig config, ICacheManager cacheManager)
+        public InstallController(IInstallationLocalizationService locService, GrandConfig config, ICacheManager cacheManager,
+            IServiceProvider serviceProvider)
         {
-            this._locService = locService;
-            this._config = config;
-            this._cacheManager = cacheManager;
+            _locService = locService;
+            _config = config;
+            _cacheManager = cacheManager;
+            _serviceProvider = serviceProvider;
         }
 
         #endregion
@@ -57,10 +61,14 @@ namespace Grand.Web.Controllers
 
         #region Methods
 
-        public virtual IActionResult Index()
+        public virtual async Task<IActionResult> Index()
         {
             if (DataSettingsHelper.DatabaseIsInstalled())
                 return RedirectToRoute("HomePage");
+
+            var installed = await _cacheManager.GetAsync<bool>("Installed");
+            if (installed)
+                return View(new InstallModel() { Installed = true });
 
             var model = new InstallModel
             {
@@ -78,12 +86,21 @@ namespace Grand.Web.Controllers
                     Selected = _locService.GetCurrentLanguage().Code == lang.Code,
                 });
             }
-
+            //prepare collation list
+            foreach (var col in _locService.GetAvailableCollations())
+            {
+                model.AvailableCollation.Add(new SelectListItem
+                {
+                    Value = col.Value,
+                    Text = col.Name,
+                    Selected = _locService.GetCurrentLanguage().Code == col.Value,
+                });
+            }
             return View(model);
         }
 
         [HttpPost]
-        public virtual IActionResult Index(InstallModel model)
+        public virtual async Task<IActionResult> Index(InstallModel model)
         {
             if (DataSettingsHelper.DatabaseIsInstalled())
                 return RedirectToRoute("HomePage");
@@ -130,7 +147,7 @@ namespace Grand.Web.Controllers
                     var client = new MongoClient(connectionString);
                     var databaseName = new MongoUrl(connectionString).DatabaseName;
                     var database = client.GetDatabase(databaseName);
-                    database.RunCommandAsync((Command<BsonDocument>)"{ping:1}").Wait();
+                    await database.RunCommandAsync((Command<BsonDocument>)"{ping:1}");
 
                     var filter = new BsonDocument("name", "GrandNodeVersion");
                     var found = database.ListCollectionsAsync(new ListCollectionsOptions { Filter = filter }).Result;
@@ -146,7 +163,7 @@ namespace Grand.Web.Controllers
             else
                 ModelState.AddModelError("", _locService.GetResource("ConnectionStringRequired"));
 
-            var webHelper = EngineContext.Current.Resolve<IWebHelper>();
+            var webHelper = _serviceProvider.GetRequiredService<IWebHelper>();
 
             //validate permissions
             var dirsToCheck = FilePermissionHelper.GetDirectoriesWrite();
@@ -172,21 +189,21 @@ namespace Grand.Web.Controllers
                     };
                     settingsManager.SaveSettings(settings);
 
-                    var dataProviderInstance = EngineContext.Current.Resolve<BaseDataProviderManager>().LoadDataProvider();
+                    var dataProviderInstance = _serviceProvider.GetRequiredService<BaseDataProviderManager>().LoadDataProvider();
                     dataProviderInstance.InitDatabase();
 
                     var dataSettingsManager = new DataSettingsManager();
                     var dataProviderSettings = dataSettingsManager.LoadSettings(reloadSettings: true);
 
-                    var installationService = EngineContext.Current.Resolve<IInstallationService>();
-                    installationService.InstallData(model.AdminEmail, model.AdminPassword, model.InstallSampleData);
+                    var installationService = _serviceProvider.GetRequiredService<IInstallationService>();
+                    await installationService.InstallData(model.AdminEmail, model.AdminPassword, model.Collation, model.InstallSampleData);
 
                     //reset cache
                     DataSettingsHelper.ResetCache();
 
                     //install plugins
                     PluginManager.MarkAllPluginsAsUninstalled();
-                    var pluginFinder = EngineContext.Current.Resolve<IPluginFinder>();
+                    var pluginFinder = _serviceProvider.GetRequiredService<IPluginFinder>();
                     var plugins = pluginFinder.GetPlugins<IPlugin>(LoadPluginsMode.All)
                         .ToList()
                         .OrderBy(x => x.PluginDescriptor.Group)
@@ -207,12 +224,12 @@ namespace Grand.Web.Controllers
 
                         try
                         {
-                            plugin.Install();
+                            await plugin.Install();
                         }
                         catch (Exception ex)
                         {
-                            var _logger = EngineContext.Current.Resolve<ILogger>();
-                            _logger.InsertLog(Core.Domain.Logging.LogLevel.Error, "Error during installing plugin " + plugin.PluginDescriptor.SystemName,
+                            var _logger = _serviceProvider.GetRequiredService<ILogger>();
+                            await _logger.InsertLog(Core.Domain.Logging.LogLevel.Error, "Error during installing plugin " + plugin.PluginDescriptor.SystemName,
                                 ex.Message + " " + ex.InnerException?.Message);
                         }
                     }
@@ -223,26 +240,18 @@ namespace Grand.Web.Controllers
                     foreach (var providerType in permissionProviders)
                     {
                         var provider = (IPermissionProvider)Activator.CreateInstance(providerType);
-                        EngineContext.Current.Resolve<IPermissionService>().InstallPermissions(provider);
+                        await _serviceProvider.GetRequiredService<IPermissionService>().InstallPermissions(provider);
                     }
 
                     //restart application
-                    if (Core.OperatingSystem.IsWindows())
-                    {
-                        webHelper.RestartAppDomain();
-                        //Redirect to home page
-                        return RedirectToRoute("HomePage");
-                    }
-                    else
-                    {
-                        return View(new InstallModel() { Installed = true });
-                    }
+                    await _cacheManager.SetAsync("Installed", true, 120);
+                    return View(new InstallModel() { Installed = true });
                 }
                 catch (Exception exception)
                 {
                     //reset cache
                     DataSettingsHelper.ResetCache();
-                    _cacheManager.Clear();
+                    await _cacheManager.Clear();
 
                     System.IO.File.Delete(CommonHelper.MapPath("~/App_Data/Settings.txt"));
 
@@ -258,6 +267,17 @@ namespace Grand.Web.Controllers
                     Value = Url.Action("ChangeLanguage", "Install", new { language = lang.Code }),
                     Text = lang.Name,
                     Selected = _locService.GetCurrentLanguage().Code == lang.Code,
+                });
+            }
+
+            //prepare collation list
+            foreach (var col in _locService.GetAvailableCollations())
+            {
+                model.AvailableCollation.Add(new SelectListItem
+                {
+                    Value = col.Value,
+                    Text = col.Name,
+                    Selected = _locService.GetCurrentLanguage().Code == col.Value,
                 });
             }
 
@@ -281,7 +301,7 @@ namespace Grand.Web.Controllers
                 return RedirectToRoute("HomePage");
 
             //restart application
-            var webHelper = EngineContext.Current.Resolve<IWebHelper>();
+            var webHelper = _serviceProvider.GetRequiredService<IWebHelper>();
             webHelper.RestartAppDomain();
 
             //Redirect to home page

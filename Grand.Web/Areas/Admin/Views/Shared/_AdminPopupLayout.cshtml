@@ -10,4 +10,10 @@
 @section statusbar
 {
 }
+@Html.AntiForgeryToken()
 @RenderBody()
+<style>
+    .nav-md .container.body .right_col {
+        margin-left: 0px;
+    }
+</style>

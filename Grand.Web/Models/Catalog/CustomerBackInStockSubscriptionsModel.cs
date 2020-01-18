@@ -1,7 +1,6 @@
-﻿using System.Collections.Generic;
-using Grand.Framework.Mvc;
+﻿using Grand.Framework.Mvc.Models;
 using Grand.Web.Models.Common;
-using Grand.Framework.Mvc.Models;
+using System.Collections.Generic;
 
 namespace Grand.Web.Models.Catalog
 {
@@ -9,7 +8,7 @@ namespace Grand.Web.Models.Catalog
     {
         public CustomerBackInStockSubscriptionsModel()
         {
-            this.Subscriptions = new List<BackInStockSubscriptionModel>();
+            Subscriptions = new List<BackInStockSubscriptionModel>();
         }
 
         public IList<BackInStockSubscriptionModel> Subscriptions { get; set; }
@@ -21,6 +20,7 @@ namespace Grand.Web.Models.Catalog
         {
             public string ProductId { get; set; }
             public string ProductName { get; set; }
+            public string AttributeDescription { get; set; }
             public string SeName { get; set; }
         }
 

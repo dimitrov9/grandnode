@@ -1,10 +1,10 @@
-﻿using System;
-using System.Diagnostics;
-using System.Linq;
+﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Abstractions;
 using Microsoft.AspNetCore.Mvc.ActionConstraints;
 using Microsoft.AspNetCore.Routing;
-using Microsoft.AspNetCore.Http;
+using System;
+using System.Diagnostics;
+using System.Linq;
 
 namespace Grand.Framework.Controllers
 {
@@ -28,9 +28,9 @@ namespace Grand.Framework.Controllers
         public FormValueRequiredAttribute(FormValueRequirement requirement, bool validateNameOnly, params string[] submitButtonNames)
         {
             //at least one submit button should be found
-            this._submitButtonNames = submitButtonNames;
-            this._validateNameOnly = validateNameOnly;
-            this._requirement = requirement;
+            _submitButtonNames = submitButtonNames;
+            _validateNameOnly = validateNameOnly;
+            _requirement = requirement;
         }
 
 

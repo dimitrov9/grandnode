@@ -1,7 +1,8 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Grand.Framework.Components;
+using Grand.Web.Interfaces;
+using Microsoft.AspNetCore.Mvc;
 using System;
-using Grand.Web.Services;
-using Grand.Framework.Components;
+using System.Threading.Tasks;
 
 namespace Grand.Web.ViewComponents
 {
@@ -11,13 +12,13 @@ namespace Grand.Web.ViewComponents
 
         public FaviconViewComponent(ICommonViewModelService commonViewModelService)
         {
-            this._commonViewModelService = commonViewModelService;
+            _commonViewModelService = commonViewModelService;
         }
 
         public IViewComponentResult Invoke()
         {
             var model = _commonViewModelService.PrepareFavicon();
-            if (String.IsNullOrEmpty(model.FaviconUrl))
+            if (string.IsNullOrEmpty(model.FaviconUrl))
                 return Content("");
 
             return View(model);

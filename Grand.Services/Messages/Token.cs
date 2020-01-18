@@ -1,5 +1,4 @@
-﻿
-namespace Grand.Services.Messages
+﻿namespace Grand.Services.Messages
 {
     public sealed class Token
     {
@@ -14,9 +13,9 @@ namespace Grand.Services.Messages
         }
         public Token(string key, string value, bool neverHtmlEncoded)
         {
-            this._key = key;
-            this._value = value;
-            this._neverHtmlEncoded = neverHtmlEncoded;
+            _key = key;
+            _value = value;
+            _neverHtmlEncoded = neverHtmlEncoded;
         }
 
         /// <summary>

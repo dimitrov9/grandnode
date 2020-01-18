@@ -1,11 +1,12 @@
-﻿using System;
+﻿using Grand.Core;
+using Grand.Core.Data;
+using Grand.Core.Domain.Customers;
+using Grand.Services.Customers;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Mvc.Routing;
-using Grand.Core;
-using Grand.Core.Data;
-using Grand.Services.Customers;
+using System;
 
 namespace Grand.Framework.Mvc.Filters
 {
@@ -31,14 +32,16 @@ namespace Grand.Framework.Mvc.Filters
             #region Fields
 
             private readonly IWorkContext _workContext;
+            private readonly CustomerSettings _customerSettings;
 
             #endregion
 
             #region Ctor
 
-            public ValidatePasswordFilter(IWorkContext workContext)
+            public ValidatePasswordFilter(IWorkContext workContext, CustomerSettings customerSettings)
             {
-                this._workContext = workContext;
+                _workContext = workContext;
+                _customerSettings = customerSettings;
             }
 
             #endregion
@@ -70,7 +73,7 @@ namespace Grand.Framework.Mvc.Filters
                     actionName.Equals("ChangePassword", StringComparison.OrdinalIgnoreCase)))
                 {
                     //check password expiration
-                    if (_workContext.CurrentCustomer.PasswordIsExpired())
+                    if (_workContext.CurrentCustomer.PasswordIsExpired(_customerSettings))
                     {
                         //redirect to ChangePassword page if expires
                         var changePasswordUrl = new UrlHelper(context).RouteUrl("CustomerChangePassword");

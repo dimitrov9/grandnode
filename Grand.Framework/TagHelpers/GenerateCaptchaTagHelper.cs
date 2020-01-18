@@ -3,8 +3,6 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.AspNetCore.Razor.TagHelpers;
 using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace Grand.Framework.TagHelpers
 {
@@ -47,7 +45,7 @@ namespace Grand.Framework.TagHelpers
             var captchaControl = new GRecaptchaControl(_captchaSettings.ReCaptchaVersion)
             {
                 Theme = _captchaSettings.ReCaptchaTheme,
-                Id = "recaptcha",
+                Id = "g-recaptcha-response-value-" + Guid.NewGuid().ToString("N"),
                 PublicKey = _captchaSettings.ReCaptchaPublicKey,
                 Language = _captchaSettings.ReCaptchaLanguage
             };

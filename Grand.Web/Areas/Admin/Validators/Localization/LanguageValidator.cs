@@ -1,14 +1,18 @@
-﻿using System.Globalization;
-using FluentValidation;
-using Grand.Web.Areas.Admin.Models.Localization;
-using Grand.Services.Localization;
+﻿using FluentValidation;
 using Grand.Framework.Validators;
+using Grand.Services.Localization;
+using Grand.Web.Areas.Admin.Models.Localization;
+using System.Collections.Generic;
+using System.Globalization;
 
 namespace Grand.Web.Areas.Admin.Validators.Localization
 {
     public class LanguageValidator : BaseGrandValidator<LanguageModel>
     {
-        public LanguageValidator(ILocalizationService localizationService)
+        public LanguageValidator(
+            IEnumerable<IValidatorConsumer<LanguageModel>> validators,
+            ILocalizationService localizationService)
+            : base(validators)
         {
             RuleFor(x => x.Name).NotEmpty().WithMessage(localizationService.GetResource("Admin.Configuration.Languages.Fields.Name.Required"));
             RuleFor(x => x.LanguageCulture)

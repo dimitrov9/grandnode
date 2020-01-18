@@ -1,10 +1,8 @@
 ﻿using Grand.Core;
-using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Security.AccessControl;
 using System.Security.Principal;
-using System.Text;
 
 namespace Grand.Framework.Security
 {
@@ -162,11 +160,12 @@ namespace Grand.Framework.Security
             var dirsToCheck = new List<string>();
             dirsToCheck.Add(Path.Combine(rootDir, "App_Data"));
             dirsToCheck.Add(Path.Combine(rootDir, "bin"));
-            dirsToCheck.Add(Path.Combine(rootDir, "content"));
-            dirsToCheck.Add(Path.Combine(rootDir, "content\\images"));
-            dirsToCheck.Add(Path.Combine(rootDir, "content\\images\\thumbs"));
-            dirsToCheck.Add(Path.Combine(rootDir, "content\\images\\uploaded"));
-            dirsToCheck.Add(Path.Combine(rootDir, "content\\files\\Exportimport"));
+            dirsToCheck.Add(Path.Combine(rootDir, "logs"));
+            dirsToCheck.Add(Path.Combine(rootDir, "wwwroot\\content"));
+            dirsToCheck.Add(Path.Combine(rootDir, "wwwroot\\content\\images"));
+            dirsToCheck.Add(Path.Combine(rootDir, "wwwroot\\content\\images\\thumbs"));
+            dirsToCheck.Add(Path.Combine(rootDir, "wwwroot\\content\\images\\uploaded"));
+            dirsToCheck.Add(Path.Combine(rootDir, "wwwroot\\content\\files\\exportimport"));
             dirsToCheck.Add(Path.Combine(rootDir, "plugins"));
             dirsToCheck.Add(Path.Combine(rootDir, "plugins\\bin"));
             return dirsToCheck;
@@ -182,7 +181,7 @@ namespace Grand.Framework.Security
             string rootDir = CommonHelper.MapPath("~/");
             var filesToCheck = new List<string>();
             filesToCheck.Add(Path.Combine(rootDir, "web.config"));
-            if (Grand.Core.OperatingSystem.IsWindows())
+            if (OperatingSystem.IsWindows())
             {
                 filesToCheck.Add(Path.Combine(rootDir, "App_Data\\InstalledPlugins.txt"));
                 filesToCheck.Add(Path.Combine(rootDir, "App_Data\\Settings.txt"));

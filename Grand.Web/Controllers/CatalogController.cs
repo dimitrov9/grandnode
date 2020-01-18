@@ -1,32 +1,30 @@
-﻿using System;
-using System.Linq;
-using Microsoft.AspNetCore.Mvc;
-using Grand.Core;
+﻿using Grand.Core;
 using Grand.Core.Domain.Catalog;
 using Grand.Core.Domain.Customers;
-using Grand.Core.Domain.Media;
+using Grand.Core.Domain.Orders;
 using Grand.Core.Domain.Vendors;
+using Grand.Framework.Controllers;
+using Grand.Framework.Mvc.Filters;
+using Grand.Framework.Security;
+using Grand.Framework.Security.Captcha;
 using Grand.Services.Catalog;
 using Grand.Services.Common;
 using Grand.Services.Customers;
 using Grand.Services.Localization;
 using Grand.Services.Logging;
+using Grand.Services.Orders;
 using Grand.Services.Security;
 using Grand.Services.Stores;
 using Grand.Services.Vendors;
-using Grand.Framework.Security;
+using Grand.Web.Interfaces;
 using Grand.Web.Models.Catalog;
-using Grand.Web.Services;
-using Grand.Framework.Mvc.Filters;
-using Microsoft.Net.Http.Headers;
-using Grand.Framework.Security.Captcha;
-using Grand.Services.Events;
-using Grand.Services.Orders;
 using Grand.Web.Models.Vendors;
-using Grand.Framework.Controllers;
-using Grand.Core.Domain.Orders;
-using Grand.Core.Infrastructure;
-using System.Collections.Generic;
+using MediatR;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Net.Http.Headers;
+using System;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Grand.Web.Controllers
 {
@@ -35,7 +33,6 @@ namespace Grand.Web.Controllers
         #region Fields
 
         private readonly ICatalogViewModelService _catalogViewModelService;
-        private readonly IProductViewModelService _productViewModelService;        
         private readonly IVendorService _vendorService;
         private readonly IWorkContext _workContext;
         private readonly IStoreContext _storeContext;
@@ -55,7 +52,6 @@ namespace Grand.Web.Controllers
         #region Constructors
 
         public CatalogController(ICatalogViewModelService catalogViewModelService,
-            IProductViewModelService productViewModelService,
             IVendorService vendorService,
             IWorkContext workContext, 
             IStoreContext storeContext,
@@ -70,30 +66,29 @@ namespace Grand.Web.Controllers
             IVendorViewModelService vendorViewModelService,
             VendorSettings vendorSettings)
         {
-            this._catalogViewModelService = catalogViewModelService;
-            this._productViewModelService = productViewModelService;
-            this._vendorService = vendorService;
-            this._workContext = workContext;
-            this._storeContext = storeContext;
-            this._localizationService = localizationService;
-            this._webHelper = webHelper;
-            this._genericAttributeService = genericAttributeService;
-            this._aclService = aclService;
-            this._storeMappingService = storeMappingService;
-            this._permissionService = permissionService;
-            this._customerActivityService = customerActivityService;
-            this._customerActionEventService = customerActionEventService;
-            this._vendorViewModelService = vendorViewModelService;
-            this._vendorSettings = vendorSettings;
+            _catalogViewModelService = catalogViewModelService;
+            _vendorService = vendorService;
+            _workContext = workContext;
+            _storeContext = storeContext;
+            _localizationService = localizationService;
+            _webHelper = webHelper;
+            _genericAttributeService = genericAttributeService;
+            _aclService = aclService;
+            _storeMappingService = storeMappingService;
+            _permissionService = permissionService;
+            _customerActivityService = customerActivityService;
+            _customerActionEventService = customerActionEventService;
+            _vendorViewModelService = vendorViewModelService;
+            _vendorSettings = vendorSettings;
         }
 
         #endregion
 
         #region Utilities
 
-        protected void SaveLastContinueShoppingPage(Customer customer)
+        protected async Task SaveLastContinueShoppingPage(Customer customer)
         {
-            _genericAttributeService.SaveAttribute(customer,
+            await _genericAttributeService.SaveAttribute(customer,
                 SystemCustomerAttributeNames.LastContinueShoppingPage,
                 _webHelper.GetThisPageUrl(false),
                 _storeContext.CurrentStore.Id);
@@ -103,9 +98,9 @@ namespace Grand.Web.Controllers
 
         #region Categories
 
-        public virtual IActionResult Category(string categoryId, CatalogPagingFilteringModel command)
+        public virtual async Task<IActionResult> Category(string categoryId, CatalogPagingFilteringModel command)
         {
-            var category = _catalogViewModelService.GetCategoryById(categoryId);
+            var category = await _catalogViewModelService.GetCategoryById(categoryId);
             if (category == null)
                 return InvokeHttp404();
 
@@ -113,7 +108,7 @@ namespace Grand.Web.Controllers
 
             //Check whether the current user has a "Manage catalog" permission
             //It allows him to preview a category before publishing
-            if (!category.Published && !_permissionService.Authorize(StandardPermissionProvider.ManageCategories, customer))
+            if (!category.Published && !await _permissionService.Authorize(StandardPermissionProvider.ManageCategories, customer))
                 return InvokeHttp404();
 
             //ACL (access control list)
@@ -125,20 +120,20 @@ namespace Grand.Web.Controllers
                 return InvokeHttp404();
 
             //'Continue shopping' URL
-            SaveLastContinueShoppingPage(customer);
+            await SaveLastContinueShoppingPage(customer);
 
             //display "edit" (manage) link
-            if (_permissionService.Authorize(StandardPermissionProvider.AccessAdminPanel, customer) && _permissionService.Authorize(StandardPermissionProvider.ManageCategories, customer))
+            if (await _permissionService.Authorize(StandardPermissionProvider.AccessAdminPanel, customer) && await _permissionService.Authorize(StandardPermissionProvider.ManageCategories, customer))
                 DisplayEditLink(Url.Action("Edit", "Category", new { id = category.Id, area = "Admin" }));
 
             //activity log
-            _customerActivityService.InsertActivity("PublicStore.ViewCategory", category.Id, _localizationService.GetResource("ActivityLog.PublicStore.ViewCategory"), category.Name);
-            _customerActionEventService.Viewed(customer, this.HttpContext.Request.Path.ToString(), this.Request.Headers[HeaderNames.Referer].ToString() != null ? Request.Headers["Referer"].ToString() : "");
+            await _customerActivityService.InsertActivity("PublicStore.ViewCategory", category.Id, _localizationService.GetResource("ActivityLog.PublicStore.ViewCategory"), category.Name);
+            await _customerActionEventService.Viewed(customer, this.HttpContext.Request.Path.ToString(), this.Request.Headers[HeaderNames.Referer].ToString() != null ? Request.Headers["Referer"].ToString() : "");
             //model
-            var model = _catalogViewModelService.PrepareCategory(category, command);
+            var model = await _catalogViewModelService.PrepareCategory(category, command);
 
             //template
-            var templateViewPath = _catalogViewModelService.PrepareCategoryTemplateViewPath(category.CategoryTemplateId);
+            var templateViewPath = await _catalogViewModelService.PrepareCategoryTemplateViewPath(category.CategoryTemplateId);
 
             return View(templateViewPath, model);
         }
@@ -147,9 +142,9 @@ namespace Grand.Web.Controllers
 
         #region Manufacturers
 
-        public virtual IActionResult Manufacturer(string manufacturerId, CatalogPagingFilteringModel command)
+        public virtual async Task<IActionResult> Manufacturer(string manufacturerId, CatalogPagingFilteringModel command)
         {
-            var manufacturer = _catalogViewModelService.GetManufacturerById(manufacturerId);
+            var manufacturer = await _catalogViewModelService.GetManufacturerById(manufacturerId);
             if (manufacturer == null)
                 return InvokeHttp404();
 
@@ -157,7 +152,7 @@ namespace Grand.Web.Controllers
 
             //Check whether the current user has a "Manage catalog" permission
             //It allows him to preview a manufacturer before publishing
-            if (!manufacturer.Published && !_permissionService.Authorize(StandardPermissionProvider.ManageManufacturers, customer))
+            if (!manufacturer.Published && !await _permissionService.Authorize(StandardPermissionProvider.ManageManufacturers, customer))
                 return InvokeHttp404();
 
             //ACL (access control list)
@@ -169,28 +164,28 @@ namespace Grand.Web.Controllers
                 return InvokeHttp404();
 
             //'Continue shopping' URL
-            SaveLastContinueShoppingPage(customer);
+            await SaveLastContinueShoppingPage(customer);
 
             //display "edit" (manage) link
-            if (_permissionService.Authorize(StandardPermissionProvider.AccessAdminPanel, customer) && _permissionService.Authorize(StandardPermissionProvider.ManageManufacturers, customer))
+            if (await _permissionService.Authorize(StandardPermissionProvider.AccessAdminPanel, customer) && await _permissionService.Authorize(StandardPermissionProvider.ManageManufacturers, customer))
                 DisplayEditLink(Url.Action("Edit", "Manufacturer", new { id = manufacturer.Id, area = "Admin" }));
-            
+
             //activity log
-            _customerActivityService.InsertActivity("PublicStore.ViewManufacturer", manufacturer.Id, _localizationService.GetResource("ActivityLog.PublicStore.ViewManufacturer"), manufacturer.Name);
-            _customerActionEventService.Viewed(customer, this.HttpContext.Request.Path.ToString(), this.Request.Headers[HeaderNames.Referer].ToString() != null ? Request.Headers[HeaderNames.Referer].ToString() : "");
+            await _customerActivityService.InsertActivity("PublicStore.ViewManufacturer", manufacturer.Id, _localizationService.GetResource("ActivityLog.PublicStore.ViewManufacturer"), manufacturer.Name);
+            await _customerActionEventService.Viewed(customer, this.HttpContext.Request.Path.ToString(), this.Request.Headers[HeaderNames.Referer].ToString() != null ? Request.Headers[HeaderNames.Referer].ToString() : "");
 
             //model
-            var model = _catalogViewModelService.PrepareManufacturer(manufacturer, command);
+            var model = await _catalogViewModelService.PrepareManufacturer(manufacturer, command);
 
             //template
-            var templateViewPath = _catalogViewModelService.PrepareManufacturerTemplateViewPath(manufacturer.ManufacturerTemplateId);
+            var templateViewPath = await _catalogViewModelService.PrepareManufacturerTemplateViewPath(manufacturer.ManufacturerTemplateId);
 
             return View(templateViewPath, model);
         }
 
-        public virtual IActionResult ManufacturerAll()
+        public virtual async Task<IActionResult> ManufacturerAll()
         {
-            var model = _catalogViewModelService.PrepareManufacturerAll();
+            var model = await _catalogViewModelService.PrepareManufacturerAll();
             return View(model);
         }
 
@@ -198,9 +193,9 @@ namespace Grand.Web.Controllers
 
         #region Vendors
 
-        public virtual IActionResult Vendor(string vendorId, CatalogPagingFilteringModel command)
+        public virtual async Task<IActionResult> Vendor(string vendorId, CatalogPagingFilteringModel command)
         {
-            var vendor = _vendorService.GetVendorById(vendorId);
+            var vendor = await _vendorService.GetVendorById(vendorId);
             if (vendor == null || vendor.Deleted || !vendor.Active)
                 return InvokeHttp404();
 
@@ -211,26 +206,26 @@ namespace Grand.Web.Controllers
             var customer = _workContext.CurrentCustomer;
 
             //'Continue shopping' URL
-            SaveLastContinueShoppingPage(customer);
+            await SaveLastContinueShoppingPage(customer);
 
             //display "edit" (manage) link
-            if (_permissionService.Authorize(StandardPermissionProvider.AccessAdminPanel, customer) && _permissionService.Authorize(StandardPermissionProvider.ManageManufacturers, customer))
+            if (await _permissionService.Authorize(StandardPermissionProvider.AccessAdminPanel, customer) && await _permissionService.Authorize(StandardPermissionProvider.ManageManufacturers, customer))
                 DisplayEditLink(Url.Action("Edit", "Vendor", new { id = vendor.Id, area = "Admin" }));
 
-            var model = _catalogViewModelService.PrepareVendor(vendor, command);
+            var model = await _catalogViewModelService.PrepareVendor(vendor, command);
             //review
             model.VendorReviewOverview = _vendorViewModelService.PrepareVendorReviewOverviewModel(vendor);
 
             return View(model);
         }
 
-        public virtual IActionResult VendorAll()
+        public virtual async Task<IActionResult> VendorAll()
         {
             //we don't allow viewing of vendors if "vendors" block is hidden
             if (_vendorSettings.VendorsBlockItemsToDisplay == 0)
                 return RedirectToRoute("HomePage");
 
-            var model = _catalogViewModelService.PrepareVendorAll();
+            var model = await _catalogViewModelService.PrepareVendorAll();
             return View(model);
         }
 
@@ -239,14 +234,14 @@ namespace Grand.Web.Controllers
 
         #region Vendor reviews
 
-        public virtual IActionResult VendorReviews(string vendorId)
+        public virtual async Task<IActionResult> VendorReviews(string vendorId)
         {
-            var vendor = _vendorService.GetVendorById(vendorId);
+            var vendor = await _vendorService.GetVendorById(vendorId);
             if (vendor == null || !vendor.Active || !vendor.AllowCustomerReviews)
                 return RedirectToRoute("HomePage");
 
             var model = new VendorReviewsModel();
-            _vendorViewModelService.PrepareVendorReviewsModel(model, vendor);
+            await _vendorViewModelService.PrepareVendorReviewsModel(model, vendor);
             //only registered users can leave reviews
             if (_workContext.CurrentCustomer.IsGuest() && !_vendorSettings.AllowAnonymousUsersToReviewVendor)
                 ModelState.AddModelError("", _localizationService.GetResource("VendorReviews.OnlyRegisteredUsersCanWriteReviews"));
@@ -257,12 +252,12 @@ namespace Grand.Web.Controllers
 
         [HttpPost, ActionName("VendorReviews")]
         [FormValueRequired("add-review")]
-        [PublicAntiForgery]
+        [AutoValidateAntiforgeryToken]
         [ValidateCaptcha]
-        public virtual IActionResult VendorReviewsAdd(string vendorId, VendorReviewsModel model, bool captchaValid, 
-            [FromServices] IOrderService orderService, [FromServices] IEventPublisher eventPublisher, [FromServices] CaptchaSettings captchaSettings)
+        public virtual async Task<IActionResult> VendorReviewsAdd(string vendorId, VendorReviewsModel model, bool captchaValid, 
+            [FromServices] IOrderService orderService, [FromServices] IMediator eventPublisher, [FromServices] CaptchaSettings captchaSettings)
         {
-            var vendor = _vendorService.GetVendorById(vendorId);
+            var vendor = await _vendorService.GetVendorById(vendorId);
             if (vendor == null || !vendor.Active || !vendor.AllowCustomerReviews)
                 return RedirectToRoute("HomePage");
 
@@ -279,20 +274,20 @@ namespace Grand.Web.Controllers
 
             //allow reviews only by customer that bought something from this vendor
             if (_vendorSettings.VendorReviewPossibleOnlyAfterPurchasing &&
-                    !orderService.SearchOrders(customerId: _workContext.CurrentCustomer.Id, vendorId: vendorId, os: OrderStatus.Complete).Any())
+                    !(await orderService.SearchOrders(customerId: _workContext.CurrentCustomer.Id, vendorId: vendorId, os: OrderStatus.Complete)).Any())
                 ModelState.AddModelError(string.Empty, _localizationService.GetResource("VendorReviews.VendorReviewPossibleOnlyAfterPurchasing"));
 
             if (ModelState.IsValid)
             {
-                var vendorReview = _vendorViewModelService.InsertVendorReview(vendor, model);
+                var vendorReview = await _vendorViewModelService.InsertVendorReview(vendor, model);
                 //activity log
-                _customerActivityService.InsertActivity("PublicStore.AddVendorReview", vendor.Id, _localizationService.GetResource("ActivityLog.PublicStore.AddVendorReview"), vendor.Name);
+                await _customerActivityService.InsertActivity("PublicStore.AddVendorReview", vendor.Id, _localizationService.GetResource("ActivityLog.PublicStore.AddVendorReview"), vendor.Name);
 
                 //raise event
                 if (vendorReview.IsApproved)
-                    eventPublisher.Publish(new VendorReviewApprovedEvent(vendorReview));
+                    await eventPublisher.Publish(new VendorReviewApprovedEvent(vendorReview));
 
-                _vendorViewModelService.PrepareVendorReviewsModel(model, vendor);
+                await _vendorViewModelService.PrepareVendorReviewsModel(model, vendor);
                 model.AddVendorReview.Title = null;
                 model.AddVendorReview.ReviewText = null;
 
@@ -306,15 +301,15 @@ namespace Grand.Web.Controllers
             }
 
             //If we got this far, something failed, redisplay form
-            _vendorViewModelService.PrepareVendorReviewsModel(model, vendor);
+            await _vendorViewModelService.PrepareVendorReviewsModel(model, vendor);
             return View(model);
         }
 
         [HttpPost]
-        public virtual IActionResult SetVendorReviewHelpfulness(string VendorReviewId, string vendorId, bool washelpful)
+        public virtual async Task<IActionResult> SetVendorReviewHelpfulness(string VendorReviewId, string vendorId, bool washelpful, [FromServices] ICustomerService customerService)
         {
-            var vendor = _vendorService.GetVendorById(vendorId);
-            var vendorReview = _vendorService.GetVendorReviewById(VendorReviewId);
+            var vendor = await _vendorService.GetVendorById(vendorId);
+            var vendorReview = await _vendorService.GetVendorReviewById(VendorReviewId);
             if (vendorReview == null)
                 throw new ArgumentException("No vendor review found with the specified id");
 
@@ -361,14 +356,14 @@ namespace Grand.Web.Controllers
                 vendorReview.VendorReviewHelpfulnessEntries.Add(prh);
                 if (!customer.HasContributions)
                 {
-                    EngineContext.Current.Resolve<ICustomerService>().UpdateContributions(customer);
+                    await customerService.UpdateContributions(customer);
                 }
             }
 
             //new totals
             vendorReview.HelpfulYesTotal = vendorReview.VendorReviewHelpfulnessEntries.Count(x => x.WasHelpful);
             vendorReview.HelpfulNoTotal = vendorReview.VendorReviewHelpfulnessEntries.Count(x => !x.WasHelpful);
-            _vendorService.UpdateVendorReview(vendorReview);
+            await _vendorService.UpdateVendorReview(vendorReview);
 
             return Json(new
             {
@@ -382,19 +377,28 @@ namespace Grand.Web.Controllers
 
         #region Product tags
 
-        public virtual IActionResult ProductsByTag(string productTagId, CatalogPagingFilteringModel command, [FromServices] IProductTagService productTagService)
+        public virtual async Task<IActionResult> ProductsByTag(string productTagId, CatalogPagingFilteringModel command, [FromServices] IProductTagService productTagService)
         {
-            var productTag = productTagService.GetProductTagById(productTagId);
+            var productTag = await productTagService.GetProductTagById(productTagId);
             if (productTag == null)
                 return InvokeHttp404();
 
-            var model = _catalogViewModelService.PrepareProductsByTag(productTag, command);
+            var model = await _catalogViewModelService.PrepareProductsByTag(productTag, command);
             return View(model);
         }
-
-        public virtual IActionResult ProductTagsAll()
+        public virtual async Task<IActionResult> ProductsByTagName(string seName, CatalogPagingFilteringModel command, [FromServices] IProductTagService productTagService)
         {
-            var model = _catalogViewModelService.PrepareProductTagsAll();
+            var productTag = await productTagService.GetProductTagBySeName(seName);
+            if (productTag == null)
+                return InvokeHttp404();
+
+            var model = await _catalogViewModelService.PrepareProductsByTag(productTag, command);
+            return View("ProductsByTag", model);
+        }
+
+        public virtual async Task<IActionResult> ProductTagsAll()
+        {
+            var model = await _catalogViewModelService.PrepareProductTagsAll();
             return View(model);
         }
 
@@ -402,23 +406,24 @@ namespace Grand.Web.Controllers
 
         #region Searching
 
-        public virtual IActionResult Search(SearchModel model, CatalogPagingFilteringModel command)
+        public virtual async Task<IActionResult> Search(SearchModel model, CatalogPagingFilteringModel command)
         {
             //'Continue shopping' URL
-            SaveLastContinueShoppingPage(_workContext.CurrentCustomer);
-            
+            await SaveLastContinueShoppingPage(_workContext.CurrentCustomer);
+
             //Prepare model
-            var searchmodel = _catalogViewModelService.PrepareSearch(model, command);
+            var isSearchTermSpecified = HttpContext?.Request?.Query.ContainsKey("q");
+            var searchmodel = await _catalogViewModelService.PrepareSearch(model, command, isSearchTermSpecified.HasValue ? isSearchTermSpecified.Value : false);
 
             return View(searchmodel);
         }
 
-        public virtual IActionResult SearchTermAutoComplete(string term, string categoryId, [FromServices] CatalogSettings catalogSettings)
+        public virtual async Task<IActionResult> SearchTermAutoComplete(string term, string categoryId, [FromServices] CatalogSettings catalogSettings)
         {
             if (String.IsNullOrWhiteSpace(term) || term.Length < catalogSettings.ProductSearchTermMinimumLength)
                 return Content("");
 
-            var result = _catalogViewModelService.PrepareSearchAutoComplete(term, categoryId);
+            var result = await _catalogViewModelService.PrepareSearchAutoComplete(term, categoryId);
             
             return Json(result);
         }

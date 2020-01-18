@@ -1,8 +1,5 @@
-﻿using Grand.Framework.Mvc.Models;
-using Microsoft.AspNetCore.Mvc.Rendering;
-using Grand.Framework.Mvc.ModelBinding;
-using Grand.Framework;
-using Grand.Framework.Mvc;
+﻿using Grand.Framework.Mvc.ModelBinding;
+using Grand.Framework.Mvc.Models;
 
 namespace Grand.Web.Areas.Admin.Models.Settings
 {
@@ -146,6 +143,13 @@ namespace Grand.Web.Areas.Admin.Models.Settings
         public bool NewProductsEnabled { get; set; }
         public bool NewProductsEnabled_OverrideForStore { get; set; }
 
+        [GrandResourceDisplayName("Admin.Configuration.Settings.Catalog.NewProductsNumberOnHomePage")]
+        public int NewProductsNumberOnHomePage { get; set; }
+        public bool NewProductsNumberOnHomePage_OverrideForStore { get; set; }
+
+        [GrandResourceDisplayName("Admin.Configuration.Settings.Catalog.NewProductsOnHomePage")]
+        public bool NewProductsOnHomePage { get; set; }
+        public bool NewProductsOnHomePage_OverrideForStore { get; set; }
 
         [GrandResourceDisplayName("Admin.Configuration.Settings.Catalog.CompareProductsEnabled")]
         public bool CompareProductsEnabled { get; set; }

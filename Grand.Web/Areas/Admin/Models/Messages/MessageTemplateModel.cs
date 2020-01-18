@@ -1,16 +1,16 @@
-﻿using Grand.Framework.Mvc.Models;
+﻿using FluentValidation.Attributes;
+using Grand.Framework.Localization;
+using Grand.Framework.Mapping;
 using Grand.Framework.Mvc.ModelBinding;
+using Grand.Framework.Mvc.Models;
+using Grand.Web.Areas.Admin.Validators.Messages;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using FluentValidation.Attributes;
-using Grand.Web.Areas.Admin.Models.Stores;
-using Grand.Web.Areas.Admin.Validators.Messages;
-using Grand.Framework.Localization;
 
 namespace Grand.Web.Areas.Admin.Models.Messages
 {
     [Validator(typeof(MessageTemplateValidator))]
-    public partial class MessageTemplateModel : BaseGrandEntityModel, ILocalizedModel<MessageTemplateLocalizedModel>
+    public partial class MessageTemplateModel : BaseGrandEntityModel, ILocalizedModel<MessageTemplateLocalizedModel>, IStoreMappingModel
     {
         public MessageTemplateModel()
         {

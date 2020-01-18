@@ -1,6 +1,6 @@
-﻿using System.Collections.Generic;
-using Grand.Framework.Mvc.Models;
+﻿using Grand.Framework.Mvc.Models;
 using Grand.Web.Models.Media;
+using System.Collections.Generic;
 
 namespace Grand.Web.Models.Catalog
 {
@@ -15,7 +15,7 @@ namespace Grand.Web.Models.Catalog
             SubCategories = new List<SubCategoryModel>();
             CategoryBreadcrumb = new List<CategoryModel>();
         }
-
+        public string ParentCategoryId { get; set; }
         public string Name { get; set; }
         public string Description { get; set; }
         public string MetaKeywords { get; set; }
@@ -24,6 +24,7 @@ namespace Grand.Web.Models.Catalog
         public string SeName { get; set; }
         public string Flag { get; set; }
         public string FlagStyle { get; set; }
+        public string Icon { get; set; }
         public PictureModel PictureModel { get; set; }
         public CatalogPagingFilteringModel PagingFilteringContext { get; set; }
         public bool DisplayCategoryBreadcrumb { get; set; }

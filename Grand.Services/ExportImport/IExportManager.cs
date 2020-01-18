@@ -1,10 +1,10 @@
-﻿using System.Collections.Generic;
-using System.IO;
-using Grand.Core.Domain.Catalog;
+﻿using Grand.Core.Domain.Catalog;
 using Grand.Core.Domain.Customers;
 using Grand.Core.Domain.Directory;
 using Grand.Core.Domain.Messages;
 using Grand.Core.Domain.Orders;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace Grand.Services.ExportImport
 {
@@ -18,7 +18,7 @@ namespace Grand.Services.ExportImport
         /// </summary>
         /// <param name="manufacturers">Manufacturers</param>
         /// <returns>Result in XML format</returns>
-        string ExportManufacturersToXml(IList<Manufacturer> manufacturers);
+        Task<string> ExportManufacturersToXml(IList<Manufacturer> manufacturers);
 
         /// <summary>
         /// Export manufacturers to XLSX
@@ -29,7 +29,7 @@ namespace Grand.Services.ExportImport
         /// Export category list to xml
         /// </summary>
         /// <returns>Result in XML format</returns>
-        string ExportCategoriesToXml();
+        Task<string> ExportCategoriesToXml(IEnumerable<Category> categories);
 
         /// <summary>
         /// Export category to XLSX
@@ -41,7 +41,7 @@ namespace Grand.Services.ExportImport
         /// </summary>
         /// <param name="products">Products</param>
         /// <returns>Result in XML format</returns>
-        string ExportProductsToXml(IList<Product> products);
+        Task<string> ExportProductsToXml(IList<Product> products);
 
         /// <summary>
         /// Export products to XLSX
@@ -54,7 +54,7 @@ namespace Grand.Services.ExportImport
         /// </summary>
         /// <param name="orders">Orders</param>
         /// <returns>Result in XML format</returns>
-        string ExportOrdersToXml(IList<Order> orders);
+        Task<string> ExportOrdersToXml(IList<Order> orders);
 
         /// <summary>
         /// Export orders to XLSX
@@ -72,14 +72,14 @@ namespace Grand.Services.ExportImport
         /// Export customer - personal info to XLSX
         /// </summary>
         /// <param name="customer">Customer</param>
-        byte[] ExportCustomerToXlsx(Customer customer, string stroreId);
+        Task<byte[]> ExportCustomerToXlsx(Customer customer, string stroreId);
 
         /// <summary>
         /// Export customer list to xml
         /// </summary>
         /// <param name="customers">Customers</param>
         /// <returns>Result in XML format</returns>
-        string ExportCustomersToXml(IList<Customer> customers);
+        Task<string> ExportCustomersToXml(IList<Customer> customers);
 
         /// <summary>
         /// Export newsletter subscribers to TXT
@@ -99,6 +99,6 @@ namespace Grand.Services.ExportImport
         /// </summary>
         /// <param name="states">States</param>
         /// <returns>Result in TXT (string) format</returns>
-        string ExportStatesToTxt(IList<StateProvince> states);
+        Task<string> ExportStatesToTxt(IList<StateProvince> states);
     }
 }

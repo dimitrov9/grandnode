@@ -1,10 +1,10 @@
-﻿using System;
-using System.Linq;
+﻿using Grand.Core;
+using Grand.Core.Domain.Security;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.Filters;
-using Grand.Core;
-using Grand.Core.Domain.Security;
+using System;
+using System.Linq;
 
 namespace Grand.Framework.Mvc.Filters
 {
@@ -39,8 +39,8 @@ namespace Grand.Framework.Mvc.Filters
             public ValidateIpAddressFilter(IWebHelper webHelper,
                 SecuritySettings securitySettings)
             {
-                this._webHelper = webHelper;
-                this._securitySettings = securitySettings;
+                _webHelper = webHelper;
+                _securitySettings = securitySettings;
             }
 
             #endregion

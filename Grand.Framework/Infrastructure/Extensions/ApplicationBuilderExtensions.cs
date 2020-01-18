@@ -1,29 +1,29 @@
-﻿using System;
-using System.Linq;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Diagnostics;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Http;
+﻿using Autofac;
+using AutoMapper.Configuration;
 using Grand.Core;
 using Grand.Core.Configuration;
 using Grand.Core.Data;
 using Grand.Core.Domain;
 using Grand.Core.Http;
 using Grand.Core.Infrastructure;
-using Grand.Services.Authentication;
-using Grand.Services.Security;
+using Grand.Framework.Middleware;
 using Grand.Framework.Mvc.Routing;
-using StackExchange.Profiling;
-using StackExchange.Profiling.Storage;
-using Microsoft.Extensions.Caching.Memory;
+using Grand.Services.Authentication;
 using Grand.Services.Logging;
-using System.Threading.Tasks;
-using System.Globalization;
-using Microsoft.AspNetCore.Localization;
-using System.Collections.Generic;
-using Microsoft.Net.Http.Headers;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
-using System.IO;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Net.Http.Headers;
+using System;
+using System.Linq;
+using System.Threading.Tasks;
+using WebMarkupMin.AspNetCore3;
 
 namespace Grand.Framework.Infrastructure.Extensions
 {
@@ -36,9 +36,19 @@ namespace Grand.Framework.Infrastructure.Extensions
         /// Configure the application HTTP request pipeline
         /// </summary>
         /// <param name="application">Builder for configuring an application's request pipeline</param>
-        public static void ConfigureRequestPipeline(this IApplicationBuilder application)
+        public static void ConfigureRequestPipeline(this IApplicationBuilder application, IWebHostEnvironment webHostEnvironment)
         {
             EngineContext.Current.ConfigureRequestPipeline(application);
+        }
+
+        /// <summary>
+        /// Configure container
+        /// </summary>
+        /// <param name="container">ContainerBuilder from autofac</param>
+        /// <param name="configuration">configuration</param>
+        public static void ConfigureContainer(this ContainerBuilder container, Microsoft.Extensions.Configuration.IConfiguration configuration)
+        {
+            EngineContext.Current.ConfigureContainer(container, configuration);
         }
 
         /// <summary>
@@ -47,8 +57,9 @@ namespace Grand.Framework.Infrastructure.Extensions
         /// <param name="application">Builder for configuring an application's request pipeline</param>
         public static void UseGrandExceptionHandler(this IApplicationBuilder application)
         {
-            var grandConfig = EngineContext.Current.Resolve<GrandConfig>();
-            var hostingEnvironment = EngineContext.Current.Resolve<IHostingEnvironment>();
+            var serviceProvider = application.ApplicationServices;
+            var grandConfig = serviceProvider.GetRequiredService<GrandConfig>();
+            var hostingEnvironment = serviceProvider.GetRequiredService<IWebHostEnvironment>();
             bool useDetailedExceptionPage = grandConfig.DisplayFullErrorStack || hostingEnvironment.IsDevelopment();
             if (useDetailedExceptionPage)
             {
@@ -64,22 +75,29 @@ namespace Grand.Framework.Infrastructure.Extensions
             //log errors
             application.UseExceptionHandler(handler =>
             {
-                handler.Run(context =>
+                handler.Run(async context =>
                 {
                     var exception = context.Features.Get<IExceptionHandlerFeature>()?.Error;
                     if (exception == null)
-                        return Task.CompletedTask;
+                        return;
 
+                    string authHeader = context.Request.Headers["Authorization"];
+                    var apirequest = authHeader != null && authHeader.Split(' ')[0] == "Bearer";
+                    if (apirequest)
+                    {
+                        await context.Response.WriteAsync(exception.Message);
+                        return;
+                    }
                     try
                     {
                         //check whether database is installed
                         if (DataSettingsHelper.DatabaseIsInstalled())
                         {
                             //get current customer
-                            var currentCustomer = EngineContext.Current.Resolve<IWorkContext>().CurrentCustomer;
+                            var currentCustomer = serviceProvider.GetRequiredService<IWorkContext>().CurrentCustomer;
 
                             //log error
-                            EngineContext.Current.Resolve<ILogger>().Error(exception.Message, exception, currentCustomer);
+                            serviceProvider.GetRequiredService<ILogger>().Error(exception.Message, exception, currentCustomer);
                         }
                     }
                     finally
@@ -97,12 +115,16 @@ namespace Grand.Framework.Infrastructure.Extensions
         /// <param name="application">Builder for configuring an application's request pipeline</param>
         public static void UsePageNotFound(this IApplicationBuilder application)
         {
+            var serviceProvider = application.ApplicationServices;
             application.UseStatusCodePages(async context =>
             {
+                string authHeader = context.HttpContext.Request.Headers["Authorization"];
+                var apirequest = authHeader != null && authHeader.Split(' ')[0] == "Bearer";
+
                 //handle 404 Not Found
-                if (context.HttpContext.Response.StatusCode == 404)
+                if (!apirequest && context.HttpContext.Response.StatusCode == 404)
                 {
-                    var webHelper = EngineContext.Current.Resolve<IWebHelper>();
+                    var webHelper = serviceProvider.GetRequiredService<IWebHelper>();
                     if (!webHelper.IsStaticResource())
                     {
                         //get original path and query
@@ -144,13 +166,14 @@ namespace Grand.Framework.Infrastructure.Extensions
         /// <param name="application">Builder for configuring an application's request pipeline</param>
         public static void UseBadRequestResult(this IApplicationBuilder application)
         {
+            var serviceProvider = application.ApplicationServices;
             application.UseStatusCodePages(context =>
             {
                 //handle 404 (Bad request)
                 if (context.HttpContext.Response.StatusCode == StatusCodes.Status400BadRequest)
                 {
-                    var logger = EngineContext.Current.Resolve<ILogger>();
-                    var workContext = EngineContext.Current.Resolve<IWorkContext>();
+                    var logger = serviceProvider.GetRequiredService<ILogger>();
+                    var workContext = serviceProvider.GetRequiredService<IWorkContext>();
                     logger.Error("Error 400. Bad request", null, customer: workContext.CurrentCustomer);
                 }
 
@@ -167,14 +190,15 @@ namespace Grand.Framework.Infrastructure.Extensions
         {
             application.UseMiddleware<InstallUrlMiddleware>();
         }
-        
+
         /// <summary>
         /// Congifure authentication
         /// </summary>
         /// <param name="application">Builder for configuring an application's request pipeline</param>
         public static void UseGrandAuthentication(this IApplicationBuilder application)
-        {                    
-            application.UseMiddleware<AuthenticationMiddleware>();
+        {
+            application.UseAuthentication();
+            application.UseAuthorization();
         }
 
         /// <summary>
@@ -186,7 +210,7 @@ namespace Grand.Framework.Infrastructure.Extensions
             application.UseMvc(routeBuilder =>
             {
                 //register all routes
-                EngineContext.Current.Resolve<IRoutePublisher>().RegisterRoutes(routeBuilder);
+                routeBuilder.ServiceProvider.GetRequiredService<IRoutePublisher>().RegisterRoutes(routeBuilder);
             });
         }
 
@@ -205,10 +229,11 @@ namespace Grand.Framework.Infrastructure.Extensions
                         ctx.Context.Response.Headers.Append(HeaderNames.CacheControl, grandConfig.StaticFilesCacheControl);
                 }
             });
+
             //themes
             application.UseStaticFiles(new StaticFileOptions
             {
-                FileProvider = new PhysicalFileProvider(Path.Combine(Directory.GetCurrentDirectory(), @"Themes")),
+                FileProvider = new PhysicalFileProvider(CommonHelper.MapPath("Themes")),
                 RequestPath = new PathString("/Themes"),
                 OnPrepareResponse = ctx =>
                 {
@@ -219,7 +244,7 @@ namespace Grand.Framework.Infrastructure.Extensions
             //plugins
             application.UseStaticFiles(new StaticFileOptions
             {
-                FileProvider = new PhysicalFileProvider(Path.Combine(Directory.GetCurrentDirectory(), @"Plugins")),
+                FileProvider = new PhysicalFileProvider(CommonHelper.MapPath("Plugins")),
                 RequestPath = new PathString("/Plugins"),
                 OnPrepareResponse = ctx =>
                 {
@@ -229,7 +254,6 @@ namespace Grand.Framework.Infrastructure.Extensions
             });
 
         }
-
 
         /// <summary>
         /// Create and configure MiniProfiler service
@@ -241,11 +265,87 @@ namespace Grand.Framework.Infrastructure.Extensions
             if (!DataSettingsHelper.DatabaseIsInstalled())
                 return;
 
+            var serviceProvider = application.ApplicationServices;
             //whether MiniProfiler should be displayed
-            if (EngineContext.Current.Resolve<StoreInformationSettings>().DisplayMiniProfilerInPublicStore)
+            if (serviceProvider.GetRequiredService<StoreInformationSettings>().DisplayMiniProfilerInPublicStore)
             {
                 application.UseMiniProfiler();
             }
+        }
+
+        /// <summary>
+        /// Save log application started
+        /// </summary>
+        /// <param name="application">Builder for configuring an application's request pipeline</param>
+        public static void LogApplicationStarted(this IApplicationBuilder application)
+        {
+            //whether database is already installed
+            if (!DataSettingsHelper.DatabaseIsInstalled())
+                return;
+
+            var serviceProvider = application.ApplicationServices;
+            var logger = serviceProvider.GetRequiredService<ILogger>();
+            logger.Information("Application started", null, null);
+        }
+
+        /// <summary>
+        /// Configure UseForwardedHeaders
+        /// </summary>
+        /// <param name="application">Builder for configuring an application's request pipeline</param>
+        public static void UseGrandForwardedHeaders(this IApplicationBuilder application)
+        {
+            application.UseForwardedHeaders(new ForwardedHeadersOptions
+            {
+                ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+            });
+        }
+
+        /// <summary>
+        /// Configure Health checks
+        /// </summary>
+        /// <param name="application">Builder for configuring an application's request pipeline</param>
+        public static void UseGrandHealthChecks(this IApplicationBuilder application)
+        {
+            application.UseHealthChecks("/health/live");
+        }
+
+        /// <summary>
+        /// Configures the default security headers for your application.
+        /// </summary>
+        /// <param name="application">Builder for configuring an application's request pipeline</param>
+        public static void UseDefaultSecurityHeaders(this IApplicationBuilder application)
+        {
+            var policyCollection = new HeaderPolicyCollection()
+                .AddXssProtectionBlock()
+                .AddContentTypeOptionsNoSniff()
+                .AddStrictTransportSecurityMaxAgeIncludeSubDomains(maxAgeInSeconds: 60 * 60 * 24 * 365) // maxage = one year in seconds
+                .AddReferrerPolicyStrictOriginWhenCrossOrigin()
+                .AddContentSecurityPolicy(builder =>
+                {
+                    builder.AddUpgradeInsecureRequests();
+                    builder.AddDefaultSrc().Self(); 
+                    builder.AddConnectSrc().From("*");
+                    builder.AddFontSrc().From("*");
+                    builder.AddFrameAncestors().From("*");
+                    builder.AddFrameSource().From("*");
+                    builder.AddMediaSrc().From("*");
+                    builder.AddImgSrc().From("*").Data();
+                    builder.AddObjectSrc().From("*");
+                    builder.AddScriptSrc().From("*").UnsafeInline().UnsafeEval();
+                    builder.AddStyleSrc().From("*").UnsafeEval().UnsafeInline();
+                })
+                .RemoveServerHeader();
+
+            application.UseSecurityHeaders(policyCollection);
+        }
+
+        /// <summary>
+        /// Use WebMarkupMin for your application.
+        /// </summary>
+        /// <param name="application">Builder for configuring an application's request pipeline</param>
+        public static void UseHtmlMinification(this IApplicationBuilder application)
+        {
+            application.UseWebMarkupMin();
         }
 
         /// <summary>

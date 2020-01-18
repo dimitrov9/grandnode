@@ -1,8 +1,9 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Grand.Web.Services;
-using System.Linq;
-using Grand.Core.Domain.Vendors;
+﻿using Grand.Core.Domain.Vendors;
 using Grand.Framework.Components;
+using Grand.Web.Interfaces;
+using Microsoft.AspNetCore.Mvc;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Grand.Web.ViewComponents
 {
@@ -13,16 +14,16 @@ namespace Grand.Web.ViewComponents
         public VendorNavigationViewComponent(ICatalogViewModelService catalogViewModelService,
             VendorSettings vendorSettings)
         {
-            this._catalogViewModelService = catalogViewModelService;
-            this._vendorSettings = vendorSettings;
+            _catalogViewModelService = catalogViewModelService;
+            _vendorSettings = vendorSettings;
         }
 
-        public IViewComponentResult Invoke()
+        public async Task<IViewComponentResult> InvokeAsync()
         {
             if (_vendorSettings.VendorsBlockItemsToDisplay == 0)
                 return Content("");
 
-            var model = _catalogViewModelService.PrepareVendorNavigation();
+            var model = await _catalogViewModelService.PrepareVendorNavigation();
             if (!model.Vendors.Any())
                 return Content("");
 

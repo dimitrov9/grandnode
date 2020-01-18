@@ -1,12 +1,11 @@
-﻿using Grand.Framework.Mvc.ModelBinding;
+﻿using FluentValidation.Attributes;
 using Grand.Framework.Mvc.Models;
-using System;
+using Grand.Web.Validators.Knowledgebase;
 using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace Grand.Web.Models.Knowledgebase
 {
+    [Validator(typeof(KnowledgebaseArticleValidator))]
     public class KnowledgebaseArticleModel : BaseGrandEntityModel
     {
         public KnowledgebaseArticleModel()

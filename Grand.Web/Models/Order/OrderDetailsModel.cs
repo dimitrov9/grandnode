@@ -1,7 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using Grand.Framework.Mvc.Models;
+﻿using Grand.Framework.Mvc.Models;
 using Grand.Web.Models.Common;
+using System;
+using System.Collections.Generic;
 
 namespace Grand.Web.Models.Order
 {
@@ -33,7 +33,7 @@ namespace Grand.Web.Models.Order
         public bool IsReOrderAllowed { get; set; }
 
         public bool IsReturnRequestAllowed { get; set; }
-        
+
         public bool IsShippable { get; set; }
         public bool PickUpInStore { get; set; }
         public AddressModel PickupAddress { get; set; }
@@ -69,15 +69,17 @@ namespace Grand.Web.Models.Order
         public int RedeemedRewardPoints { get; set; }
         public string RedeemedRewardPointsAmount { get; set; }
         public string OrderTotal { get; set; }
-        
+
         public IList<GiftCard> GiftCards { get; set; }
 
         public bool ShowSku { get; set; }
         public IList<OrderItemModel> Items { get; set; }
-        
+
         public IList<OrderNote> OrderNotes { get; set; }
 
-		#region Nested Classes
+        public bool ShowAddOrderNote { get; set; }
+
+        #region Nested Classes
 
         public partial class OrderItemModel : BaseGrandEntityModel
         {
@@ -87,7 +89,11 @@ namespace Grand.Web.Models.Order
             public string ProductName { get; set; }
             public string ProductSeName { get; set; }
             public string UnitPrice { get; set; }
+            public decimal UnitPriceValue { get; set; }
+            public string UnitPriceWithoutDiscount { get; set; }
+            public decimal UnitPriceWithoutDiscountValue { get; set; }
             public string SubTotal { get; set; }
+            public string Discount { get; set; }
             public int Quantity { get; set; }
             public string AttributeInfo { get; set; }
             public string RentalInfo { get; set; }
@@ -124,6 +130,6 @@ namespace Grand.Web.Models.Order
             public DateTime? ShippedDate { get; set; }
             public DateTime? DeliveryDate { get; set; }
         }
-		#endregion
+        #endregion
     }
 }

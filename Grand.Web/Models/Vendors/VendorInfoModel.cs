@@ -1,6 +1,6 @@
 ﻿using FluentValidation.Attributes;
-using Grand.Framework.Mvc.Models;
 using Grand.Framework.Mvc.ModelBinding;
+using Grand.Framework.Mvc.Models;
 using Grand.Web.Validators.Vendors;
 
 namespace Grand.Web.Models.Vendors
@@ -10,7 +10,7 @@ namespace Grand.Web.Models.Vendors
     {
         public VendorInfoModel()
         {
-            this.Address = new VendorAddressModel();
+            Address = new VendorAddressModel();
         }
 
         [GrandResourceDisplayName("Account.VendorInfo.Name")]

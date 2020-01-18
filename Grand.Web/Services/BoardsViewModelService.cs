@@ -2,7 +2,7 @@
 using Grand.Core.Domain.Customers;
 using Grand.Core.Domain.Forums;
 using Grand.Core.Domain.Media;
-using Grand.Core.Infrastructure;
+using Grand.Core.Html;
 using Grand.Services.Common;
 using Grand.Services.Customers;
 using Grand.Services.Directory;
@@ -11,78 +11,77 @@ using Grand.Services.Helpers;
 using Grand.Services.Localization;
 using Grand.Services.Media;
 using Grand.Services.Seo;
+using Grand.Web.Interfaces;
 using Grand.Web.Models.Boards;
+using Grand.Web.Models.Common;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.Extensions.DependencyInjection;
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using System;
-using Grand.Web.Models.Common;
-using Grand.Core.Html;
-using Microsoft.AspNetCore.Mvc.Rendering;
+using System.Threading.Tasks;
 
 namespace Grand.Web.Services
 {
-    public partial class BoardsViewModelService: IBoardsViewModelService
+    public partial class BoardsViewModelService : IBoardsViewModelService
     {
         private readonly IForumService _forumService;
         private readonly ILocalizationService _localizationService;
         private readonly IPictureService _pictureService;
         private readonly ICountryService _countryService;
-        private readonly IWebHelper _webHelper;
         private readonly IWorkContext _workContext;
-        private readonly IStoreContext _storeContext;
         private readonly ForumSettings _forumSettings;
         private readonly CustomerSettings _customerSettings;
         private readonly MediaSettings _mediaSettings;
         private readonly IDateTimeHelper _dateTimeHelper;
+        private readonly IServiceProvider _serviceProvider;
 
         public BoardsViewModelService(IForumService forumService,
             ILocalizationService localizationService,
             IPictureService pictureService,
             ICountryService countryService,
-            IWebHelper webHelper,
             IWorkContext workContext,
-            IStoreContext storeContext,
             ForumSettings forumSettings,
             CustomerSettings customerSettings,
             MediaSettings mediaSettings,
-            IDateTimeHelper dateTimeHelper)
+            IDateTimeHelper dateTimeHelper,
+            IServiceProvider serviceProvider)
         {
-            this._forumService = forumService;
-            this._localizationService = localizationService;
-            this._pictureService = pictureService;
-            this._countryService = countryService;
-            this._webHelper = webHelper;
-            this._workContext = workContext;
-            this._storeContext = storeContext;
-            this._forumSettings = forumSettings;
-            this._customerSettings = customerSettings;
-            this._mediaSettings = mediaSettings;
-            this._dateTimeHelper = dateTimeHelper;
+            _forumService = forumService;
+            _localizationService = localizationService;
+            _pictureService = pictureService;
+            _countryService = countryService;
+            _workContext = workContext;
+            _forumSettings = forumSettings;
+            _customerSettings = customerSettings;
+            _mediaSettings = mediaSettings;
+            _dateTimeHelper = dateTimeHelper;
+            _serviceProvider = serviceProvider;
         }
 
-        public virtual BoardsIndexModel PrepareBoardsIndex()
+        public virtual async Task<BoardsIndexModel> PrepareBoardsIndex()
         {
-            var forumGroups = _forumService.GetAllForumGroups();
+            var forumGroups = await _forumService.GetAllForumGroups();
 
             var model = new BoardsIndexModel();
             foreach (var forumGroup in forumGroups)
             {
 
-                var forumGroupModel = PrepareForumGroup(forumGroup);
+                var forumGroupModel = await PrepareForumGroup(forumGroup);
                 model.ForumGroups.Add(forumGroupModel);
             }
             return model;
         }
 
-        public virtual ActiveDiscussionsModel PrepareActiveDiscussions()
+        public virtual async Task<ActiveDiscussionsModel> PrepareActiveDiscussions()
         {
-            var topics = _forumService.GetActiveTopics("", 0, _forumSettings.HomePageActiveDiscussionsTopicCount);
+            var topics = await _forumService.GetActiveTopics("", 0, _forumSettings.HomePageActiveDiscussionsTopicCount);
             if (!topics.Any())
                 return null;
             var model = new ActiveDiscussionsModel();
             foreach (var topic in topics)
             {
-                var topicModel = PrepareForumTopicRow(topic);
+                var topicModel = await PrepareForumTopicRow(topic);
                 model.ForumTopics.Add(topicModel);
             }
             model.ViewAllLinkEnabled = true;
@@ -92,19 +91,19 @@ namespace Grand.Web.Services
 
             return model;
         }
-        public virtual ActiveDiscussionsModel PrepareActiveDiscussions(string forumId = "", int pageNumber = 1)
+        public virtual async Task<ActiveDiscussionsModel> PrepareActiveDiscussions(string forumId = "", int pageNumber = 1)
         {
             var model = new ActiveDiscussionsModel();
 
             int pageSize = _forumSettings.ActiveDiscussionsPageSize > 0 ? _forumSettings.ActiveDiscussionsPageSize : 50;
 
-            var topics = _forumService.GetActiveTopics(forumId, (pageNumber - 1), pageSize);
+            var topics = await _forumService.GetActiveTopics(forumId, (pageNumber - 1), pageSize);
             model.TopicPageSize = topics.PageSize;
             model.TopicTotalRecords = topics.TotalCount;
             model.TopicPageIndex = topics.PageIndex;
             foreach (var topic in topics)
             {
-                var topicModel = PrepareForumTopicRow(topic);
+                var topicModel = await PrepareForumTopicRow(topic);
                 model.ForumTopics.Add(topicModel);
             }
             model.ViewAllLinkEnabled = false;
@@ -114,7 +113,7 @@ namespace Grand.Web.Services
             return model;
         }
 
-        public virtual ForumPageModel PrepareForumPage(Forum forum, int pageNumber)
+        public virtual async Task<ForumPageModel> PrepareForumPage(Forum forum, int pageNumber)
         {
             var model = new ForumPageModel();
             model.Id = forum.Id;
@@ -129,21 +128,21 @@ namespace Grand.Web.Services
             {
                 model.WatchForumText = _localizationService.GetResource("Forum.WatchForum");
 
-                var forumSubscription = _forumService.GetAllSubscriptions(_workContext.CurrentCustomer.Id, forum.Id, "", 0, 1).FirstOrDefault();
+                var forumSubscription = (await _forumService.GetAllSubscriptions(_workContext.CurrentCustomer.Id, forum.Id, "", 0, 1)).FirstOrDefault();
                 if (forumSubscription != null)
                 {
                     model.WatchForumText = _localizationService.GetResource("Forum.UnwatchForum");
                 }
             }
 
-            var topics = _forumService.GetAllTopics(forum.Id, "", string.Empty,
+            var topics = await _forumService.GetAllTopics(forum.Id, "", string.Empty,
                 ForumSearchType.All, 0, (pageNumber - 1), pageSize);
             model.TopicPageSize = topics.PageSize;
             model.TopicTotalRecords = topics.TotalCount;
             model.TopicPageIndex = topics.PageIndex;
             foreach (var topic in topics)
             {
-                var topicModel = PrepareForumTopicRow(topic);
+                var topicModel = await PrepareForumTopicRow(topic);
                 model.ForumTopics.Add(topicModel);
             }
             model.IsCustomerAllowedToSubscribe = _forumService.IsCustomerAllowedToSubscribe(_workContext.CurrentCustomer);
@@ -153,9 +152,9 @@ namespace Grand.Web.Services
             return model;
         }
 
-        public virtual ForumTopicRowModel PrepareForumTopicRow(ForumTopic topic)
+        public virtual async Task<ForumTopicRowModel> PrepareForumTopicRow(ForumTopic topic)
         {
-            var customer = EngineContext.Current.Resolve<ICustomerService>().GetCustomerById(topic.CustomerId);
+            var customer = await _serviceProvider.GetRequiredService<ICustomerService>().GetCustomerById(topic.CustomerId);
             var topicModel = new ForumTopicRowModel
             {
                 Id = topic.Id,
@@ -168,14 +167,14 @@ namespace Grand.Web.Services
                 ForumTopicType = topic.ForumTopicType,
                 CustomerId = topic.CustomerId,
                 AllowViewingProfiles = _customerSettings.AllowViewingProfiles,
-                CustomerName = customer.FormatUserName(),
+                CustomerName = customer.FormatUserName(_customerSettings.CustomerNameFormat),
                 IsCustomerGuest = customer.IsGuest()
             };
 
-            var forumPosts = _forumService.GetAllPosts(topic.Id, "", string.Empty, 1, _forumSettings.PostsPageSize);
+            var forumPosts = await _forumService.GetAllPosts(topic.Id, "", string.Empty, 1, _forumSettings.PostsPageSize);
             topicModel.TotalPostPages = forumPosts.TotalPages;
 
-            var firstPost = topic.GetFirstPost(_forumService);
+            var firstPost = await topic.GetFirstPost(_forumService);
             topicModel.Votes = firstPost != null ? firstPost.VoteCount : 0;
 
             return topicModel;
@@ -195,7 +194,7 @@ namespace Grand.Web.Services
             };
             return forumModel;
         }
-        public virtual ForumGroupModel PrepareForumGroup(ForumGroup forumGroup)
+        public virtual async Task<ForumGroupModel> PrepareForumGroup(ForumGroup forumGroup)
         {
             var forumGroupModel = new ForumGroupModel
             {
@@ -203,7 +202,7 @@ namespace Grand.Web.Services
                 Name = forumGroup.Name,
                 SeName = forumGroup.GetSeName(),
             };
-            var forums = _forumService.GetAllForumsByGroupId(forumGroup.Id);
+            var forums = await _forumService.GetAllForumsByGroupId(forumGroup.Id);
             foreach (var forum in forums)
             {
                 var forumModel = PrepareForumRow(forum);
@@ -236,18 +235,18 @@ namespace Grand.Web.Services
             return list;
 
         }
-        public virtual IEnumerable<SelectListItem> ForumGroupsForumsList()
+        public virtual async Task<IEnumerable<SelectListItem>> ForumGroupsForumsList()
         {
             var forumsList = new List<SelectListItem>();
             var separator = "--";
-            var forumGroups = _forumService.GetAllForumGroups();
+            var forumGroups = await _forumService.GetAllForumGroups();
 
             foreach (var fg in forumGroups)
             {
                 // Add the forum group with Value of 0 so it won't be used as a target forum
                 forumsList.Add(new SelectListItem { Text = fg.Name, Value = "" });
 
-                var forums = _forumService.GetAllForumsByGroupId(fg.Id);
+                var forums = await _forumService.GetAllForumsByGroupId(fg.Id);
                 foreach (var f in forums)
                 {
                     forumsList.Add(new SelectListItem { Text = string.Format("{0}{1}", separator, f.Name), Value = f.Id.ToString() });
@@ -255,9 +254,9 @@ namespace Grand.Web.Services
             }
             return forumsList;
         }
-        public virtual ForumTopicPageModel PrepareForumTopicPage(ForumTopic forumTopic, int pageNumber)
+        public virtual async Task<ForumTopicPageModel> PrepareForumTopicPage(ForumTopic forumTopic, int pageNumber)
         {
-            var posts = _forumService.GetAllPosts(forumTopic.Id, "", string.Empty,
+            var posts = await _forumService.GetAllPosts(forumTopic.Id, "", string.Empty,
                 pageNumber - 1, _forumSettings.PostsPageSize);
 
             //prepare model
@@ -275,8 +274,8 @@ namespace Grand.Web.Services
             {
                 model.WatchTopicText = _localizationService.GetResource("Forum.WatchTopic");
 
-                var forumTopicSubscription = _forumService.GetAllSubscriptions(currentcustomer.Id,
-                    "", forumTopic.Id, 0, 1).FirstOrDefault();
+                var forumTopicSubscription = (await _forumService.GetAllSubscriptions(currentcustomer.Id,
+                    "", forumTopic.Id, 0, 1)).FirstOrDefault();
                 if (forumTopicSubscription != null)
                 {
                     model.WatchTopicText = _localizationService.GetResource("Forum.UnwatchTopic");
@@ -287,7 +286,7 @@ namespace Grand.Web.Services
             model.PostsTotalRecords = posts.TotalCount;
             foreach (var post in posts)
             {
-                var customer = EngineContext.Current.Resolve<ICustomerService>().GetCustomerById(post.CustomerId);
+                var customer = await _serviceProvider.GetRequiredService<ICustomerService>().GetCustomerById(post.CustomerId);
                 var forumPostModel = new ForumPostModel
                 {
                     Id = post.Id,
@@ -298,16 +297,16 @@ namespace Grand.Web.Services
                     IsCurrentCustomerAllowedToDeletePost = _forumService.IsCustomerAllowedToDeletePost(currentcustomer, post),
                     CustomerId = post.CustomerId,
                     AllowViewingProfiles = _customerSettings.AllowViewingProfiles,
-                    CustomerName = customer.FormatUserName(),
+                    CustomerName = customer.FormatUserName(_customerSettings.CustomerNameFormat),
                     IsCustomerForumModerator = customer.IsForumModerator(),
                     IsCustomerGuest = customer.IsGuest(),
                     ShowCustomersPostCount = _forumSettings.ShowCustomersPostCount,
-                    ForumPostCount = customer.GetAttribute<int>(SystemCustomerAttributeNames.ForumPostCount),
+                    ForumPostCount = customer.GetAttributeFromEntity<int>(SystemCustomerAttributeNames.ForumPostCount),
                     ShowCustomersJoinDate = _customerSettings.ShowCustomersJoinDate,
                     CustomerJoinDate = customer.CreatedOnUtc,
                     AllowPrivateMessages = _forumSettings.AllowPrivateMessages,
                     SignaturesEnabled = _forumSettings.SignaturesEnabled,
-                    FormattedSignature = customer.GetAttribute<string>(SystemCustomerAttributeNames.Signature).FormatForumSignatureText(),
+                    FormattedSignature = (customer.GetAttributeFromEntity<string>(SystemCustomerAttributeNames.Signature)).FormatForumSignatureText(),
                 };
                 //created on string
                 if (_forumSettings.RelativeDateTimeFormattingEnabled)
@@ -317,8 +316,8 @@ namespace Grand.Web.Services
                 //avatar
                 if (_customerSettings.AllowCustomersToUploadAvatars)
                 {
-                    forumPostModel.CustomerAvatarUrl = _pictureService.GetPictureUrl(
-                        customer.GetAttribute<string>(SystemCustomerAttributeNames.AvatarPictureId),
+                    forumPostModel.CustomerAvatarUrl = await _pictureService.GetPictureUrl(
+                        customer.GetAttributeFromEntity<string>(SystemCustomerAttributeNames.AvatarPictureId),
                         _mediaSettings.AvatarPictureSize,
                         _customerSettings.DefaultAvatarEnabled,
                         defaultPictureType: PictureType.Avatar);
@@ -327,16 +326,16 @@ namespace Grand.Web.Services
                 forumPostModel.ShowCustomersLocation = _customerSettings.ShowCustomersLocation;
                 if (_customerSettings.ShowCustomersLocation)
                 {
-                    var countryId = customer.GetAttribute<string>(SystemCustomerAttributeNames.CountryId);
-                    var country = _countryService.GetCountryById(countryId);
-                    forumPostModel.CustomerLocation = country != null ? country.GetLocalized(x => x.Name) : string.Empty;
+                    var countryId = customer.GetAttributeFromEntity<string>(SystemCustomerAttributeNames.CountryId);
+                    var country = await _countryService.GetCountryById(countryId);
+                    forumPostModel.CustomerLocation = country != null ? country.GetLocalized(x => x.Name, _workContext.WorkingLanguage.Id) : string.Empty;
                 }
 
                 if (_forumSettings.AllowPostVoting)
                 {
                     forumPostModel.AllowPostVoting = true;
                     forumPostModel.VoteCount = post.VoteCount;
-                    var postVote = _forumService.GetPostVote(post.Id, _workContext.CurrentCustomer.Id);
+                    var postVote = await _forumService.GetPostVote(post.Id, _workContext.CurrentCustomer.Id);
                     if (postVote != null)
                         forumPostModel.VoteIsUp = postVote.IsUp;
                 }
@@ -347,10 +346,10 @@ namespace Grand.Web.Services
 
             return model;
         }
-        public virtual TopicMoveModel PrepareTopicMove(ForumTopic forumTopic)
+        public virtual async Task<TopicMoveModel> PrepareTopicMove(ForumTopic forumTopic)
         {
             var model = new TopicMoveModel();
-            model.ForumList = ForumGroupsForumsList();
+            model.ForumList = await ForumGroupsForumsList();
             model.Id = forumTopic.Id;
             model.TopicSeName = forumTopic.GetSeName();
             model.ForumSelected = forumTopic.ForumId;
@@ -372,7 +371,7 @@ namespace Grand.Web.Services
             model.Subscribed = false;
             return model;
         }
-        public virtual EditForumPostModel PrepareEditForumPost(Forum forum, ForumTopic forumTopic, string quote)
+        public virtual async Task<EditForumPostModel> PrepareEditForumPost(Forum forum, ForumTopic forumTopic, string quote)
         {
             var model = new EditForumPostModel
             {
@@ -390,8 +389,8 @@ namespace Grand.Web.Services
             //subscription            
             if (model.IsCustomerAllowedToSubscribe)
             {
-                var forumSubscription = _forumService.GetAllSubscriptions(_workContext.CurrentCustomer.Id,
-                    "", forumTopic.Id, 0, 1).FirstOrDefault();
+                var forumSubscription = (await _forumService.GetAllSubscriptions(_workContext.CurrentCustomer.Id,
+                    "", forumTopic.Id, 0, 1)).FirstOrDefault();
                 model.Subscribed = forumSubscription != null;
             }
 
@@ -399,18 +398,18 @@ namespace Grand.Web.Services
             string text = string.Empty;
             if (!String.IsNullOrEmpty(quote))
             {
-                var quotePost = _forumService.GetPostById(quote);
+                var quotePost = await _forumService.GetPostById(quote);
                 if (quotePost != null && quotePost.TopicId == forumTopic.Id)
                 {
                     var quotePostText = quotePost.Text;
-                    var customer = EngineContext.Current.Resolve<ICustomerService>().GetCustomerById(quotePost.CustomerId);
+                    var customer = await _serviceProvider.GetRequiredService<ICustomerService>().GetCustomerById(quotePost.CustomerId);
                     switch (_forumSettings.ForumEditor)
                     {
                         case EditorType.SimpleTextBox:
-                            text = String.Format("{0}:\n{1}\n", customer.FormatUserName(), quotePostText);
+                            text = String.Format("{0}:\n{1}\n", customer.FormatUserName(_customerSettings.CustomerNameFormat), quotePostText);
                             break;
                         case EditorType.BBCodeEditor:
-                            text = String.Format("[quote={0}]{1}[/quote]", customer.FormatUserName(), BBCodeHelper.RemoveQuotes(quotePostText));
+                            text = String.Format("[quote={0}]{1}[/quote]", customer.FormatUserName(_customerSettings.CustomerNameFormat), BBCodeHelper.RemoveQuotes(quotePostText));
                             break;
                     }
                     model.Text = text;
@@ -419,22 +418,23 @@ namespace Grand.Web.Services
             return model;
         }
 
-        public virtual LastPostModel PrepareLastPost(ForumPost post, bool showTopic)
+        public virtual async Task<LastPostModel> PrepareLastPost(string forumPostId, bool showTopic)
         {
+            var post = await _forumService.GetPostById(forumPostId);
             var model = new LastPostModel();
             if (post != null)
             {
-                var forumTopic = _forumService.GetTopicById(post.TopicId);
+                var forumTopic = await _forumService.GetTopicById(post.TopicId);
                 if (forumTopic != null)
                 {
-                    var customer = EngineContext.Current.Resolve<ICustomerService>().GetCustomerById(post.CustomerId);
+                    var customer = await _serviceProvider.GetRequiredService<ICustomerService>().GetCustomerById(post.CustomerId);
                     model.Id = post.Id;
                     model.ForumTopicId = post.TopicId;
                     model.ForumTopicSeName = forumTopic.GetSeName();
-                    model.ForumTopicSubject = forumTopic.StripTopicSubject();
+                    model.ForumTopicSubject = forumTopic.StripTopicSubject(_forumSettings);
                     model.CustomerId = post.CustomerId;
                     model.AllowViewingProfiles = _customerSettings.AllowViewingProfiles;
-                    model.CustomerName = customer.FormatUserName();
+                    model.CustomerName = customer.FormatUserName(_customerSettings.CustomerNameFormat);
                     model.IsCustomerGuest = customer.IsGuest();
                     //created on string
                     if (_forumSettings.RelativeDateTimeFormattingEnabled)
@@ -447,14 +447,14 @@ namespace Grand.Web.Services
             return model;
         }
 
-        public virtual ForumBreadcrumbModel PrepareForumBreadcrumb(string forumGroupId, string forumId, string forumTopicId)
+        public virtual async Task<ForumBreadcrumbModel> PrepareForumBreadcrumb(string forumGroupId, string forumId, string forumTopicId)
         {
             var model = new ForumBreadcrumbModel();
 
             ForumTopic forumTopic = null;
             if (!String.IsNullOrEmpty(forumTopicId))
             {
-                forumTopic = _forumService.GetTopicById(forumTopicId);
+                forumTopic = await _forumService.GetTopicById(forumTopicId);
                 if (forumTopic != null)
                 {
                     model.ForumTopicId = forumTopic.Id;
@@ -463,7 +463,7 @@ namespace Grand.Web.Services
                 }
             }
 
-            Forum forum = _forumService.GetForumById(forumTopic != null ? forumTopic.ForumId : (!String.IsNullOrEmpty(forumId) ? forumId : ""));
+            Forum forum = await _forumService.GetForumById(forumTopic != null ? forumTopic.ForumId : (!String.IsNullOrEmpty(forumId) ? forumId : ""));
             if (forum != null)
             {
                 model.ForumId = forum.Id;
@@ -471,7 +471,7 @@ namespace Grand.Web.Services
                 model.ForumSeName = forum.GetSeName();
             }
 
-            var forumGroup = _forumService.GetForumGroupById(forum != null ? forum.ForumGroupId : (!String.IsNullOrEmpty(forumGroupId) ? forumGroupId : ""));
+            var forumGroup = await _forumService.GetForumGroupById(forum != null ? forum.ForumGroupId : (!String.IsNullOrEmpty(forumGroupId) ? forumGroupId : ""));
             if (forumGroup != null)
             {
                 model.ForumGroupId = forumGroup.Id;
@@ -482,10 +482,10 @@ namespace Grand.Web.Services
             return model;
         }
 
-        public virtual CustomerForumSubscriptionsModel PrepareCustomerForumSubscriptions(int pageIndex)
+        public virtual async Task<CustomerForumSubscriptionsModel> PrepareCustomerForumSubscriptions(int pageIndex)
         {
             var pageSize = _forumSettings.ForumSubscriptionsPageSize;
-            var list = _forumService.GetAllSubscriptions(_workContext.CurrentCustomer.Id, "", "", pageIndex, pageSize);
+            var list = await _forumService.GetAllSubscriptions(_workContext.CurrentCustomer.Id, "", "", pageIndex, pageSize);
             var model = new CustomerForumSubscriptionsModel();
             foreach (var forumSubscription in list)
             {
@@ -498,7 +498,7 @@ namespace Grand.Web.Services
                 if (!String.IsNullOrEmpty(forumTopicId))
                 {
                     topicSubscription = true;
-                    var forumTopic = _forumService.GetTopicById(forumTopicId);
+                    var forumTopic = await _forumService.GetTopicById(forumTopicId);
                     if (forumTopic != null)
                     {
                         title = forumTopic.Subject;
@@ -507,7 +507,7 @@ namespace Grand.Web.Services
                 }
                 else
                 {
-                    var forum = _forumService.GetForumById(forumId);
+                    var forum = await _forumService.GetForumById(forumId);
                     if (forum != null)
                     {
                         title = forum.Name;
@@ -526,7 +526,7 @@ namespace Grand.Web.Services
                 });
             }
 
-            model.PagerModel = new PagerModel
+            model.PagerModel = new PagerModel(_localizationService)
             {
                 PageSize = list.PageSize,
                 TotalRecords = list.TotalCount,
@@ -540,7 +540,7 @@ namespace Grand.Web.Services
             return model;
         }
 
-        public virtual SearchModel PrepareSearch(string searchterms, bool? adv, string forumId,
+        public virtual async Task<SearchModel> PrepareSearch(string searchterms, bool? adv, string forumId,
             string within, string limitDays, int pageNumber = 1)
         {
             int pageSize = 10;
@@ -603,13 +603,13 @@ namespace Grand.Web.Services
                     Selected = true,
                 });
             var separator = "--";
-            var forumGroups = _forumService.GetAllForumGroups();
+            var forumGroups = await _forumService.GetAllForumGroups();
             foreach (var fg in forumGroups)
             {
                 // Add the forum group with value as '-' so it can't be used as a target forum id
                 forumsSelectList.Add(new SelectListItem { Text = fg.Name, Value = "-" });
 
-                var forums = _forumService.GetAllForumsByGroupId(fg.Id);
+                var forums = await _forumService.GetAllForumsByGroupId(fg.Id);
                 foreach (var f in forums)
                 {
                     forumsSelectList.Add(
@@ -688,14 +688,14 @@ namespace Grand.Web.Services
                         pageSize = _forumSettings.SearchResultsPageSize;
                     }
 
-                    var topics = _forumService.GetAllTopics(forumIdSelected, "", searchterms, searchWithin,
+                    var topics = await _forumService.GetAllTopics(forumIdSelected, "", searchterms, searchWithin,
                         limitResultsToPrevious, pageNumber - 1, pageSize);
                     model.TopicPageSize = topics.PageSize;
                     model.TopicTotalRecords = topics.TotalCount;
                     model.TopicPageIndex = topics.PageIndex;
                     foreach (var topic in topics)
                     {
-                        var topicModel = PrepareForumTopicRow(topic);
+                        var topicModel = await PrepareForumTopicRow(topic);
                         model.ForumTopics.Add(topicModel);
                     }
 

@@ -1,8 +1,9 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Grand.Web.Services;
-using Grand.Core.Domain.Orders;
-using Grand.Services.Security;
+﻿using Grand.Core.Domain.Orders;
 using Grand.Framework.Components;
+using Grand.Services.Security;
+using Grand.Web.Interfaces;
+using Microsoft.AspNetCore.Mvc;
+using System.Threading.Tasks;
 
 namespace Grand.Web.ViewComponents
 {
@@ -16,20 +17,20 @@ namespace Grand.Web.ViewComponents
             IPermissionService permissionService,
             ShoppingCartSettings shoppingCartSettings)
         {
-            this._shoppingCartViewModelService = shoppingCartViewModelService;
-            this._permissionService = permissionService;
-            this._shoppingCartSettings = shoppingCartSettings;
+            _shoppingCartViewModelService = shoppingCartViewModelService;
+            _permissionService = permissionService;
+            _shoppingCartSettings = shoppingCartSettings;
         }
 
-        public IViewComponentResult Invoke()
+        public async Task<IViewComponentResult> InvokeAsync()
         {
             if (!_shoppingCartSettings.MiniShoppingCartEnabled)
                 return Content("");
 
-            if (!_permissionService.Authorize(StandardPermissionProvider.EnableShoppingCart))
+            if (!await _permissionService.Authorize(StandardPermissionProvider.EnableShoppingCart))
                 return Content("");
 
-            var model = _shoppingCartViewModelService.PrepareMiniShoppingCart();
+            var model = await _shoppingCartViewModelService.PrepareMiniShoppingCart();
             return View(model);
         }
     }

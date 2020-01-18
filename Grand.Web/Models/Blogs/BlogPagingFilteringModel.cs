@@ -1,5 +1,5 @@
-﻿using System;
-using Grand.Framework.UI.Paging;
+﻿using Grand.Framework.UI.Paging;
+using System;
 
 namespace Grand.Web.Models.Blogs
 {
@@ -42,6 +42,10 @@ namespace Grand.Web.Models.Blogs
 
         public string Tag { get; set; }
         
+        public string CategoryId { get; set; }
+        
+        public string SearchKeyword { get; set; }
+
         #endregion
     }
 }

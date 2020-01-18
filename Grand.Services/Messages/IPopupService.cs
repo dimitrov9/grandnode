@@ -1,5 +1,5 @@
-﻿using System.Collections.Generic;
-using Grand.Core.Domain.Messages;
+﻿using Grand.Core.Domain.Messages;
+using System.Threading.Tasks;
 
 namespace Grand.Services.Messages
 {
@@ -8,18 +8,18 @@ namespace Grand.Services.Messages
         /// <summary>
         /// Inserts a popup
         /// </summary>
-        /// <param name="Popup">Popup</param>        
-        void InsertPopupActive(PopupActive popup);
+        /// <param name="popup">Popup</param>        
+        Task InsertPopupActive(PopupActive popup);
         /// <summary>
         /// Gets active banner for customer
         /// </summary>
         /// <returns>BannerActive</returns>
-        PopupActive GetActivePopupByCustomerId(string customerId);
+        Task<PopupActive> GetActivePopupByCustomerId(string customerId);
 
         /// <summary>
         /// Move popup to archive
         /// </summary>
-        void MovepopupToArchive(string id, string customerId);
+        Task MovepopupToArchive(string id, string customerId);
 
     }
 }

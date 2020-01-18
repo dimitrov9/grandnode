@@ -1,5 +1,4 @@
-﻿
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 namespace Grand.Web.Infrastructure.Installation
 {
@@ -21,6 +20,12 @@ namespace Grand.Web.Infrastructure.Installation
     }
 
     public partial class InstallationLocaleResource
+    {
+        public string Name { get; set; }
+        public string Value { get; set; }
+    }
+
+    public partial class InstallationCollation
     {
         public string Name { get; set; }
         public string Value { get; set; }

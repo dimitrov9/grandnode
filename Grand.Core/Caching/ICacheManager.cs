@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 
 namespace Grand.Core.Caching
 {
@@ -13,7 +14,37 @@ namespace Grand.Core.Caching
         /// <typeparam name="T">Type</typeparam>
         /// <param name="key">The key of the value to get.</param>
         /// <returns>The value associated with the specified key.</returns>
+        Task<T> GetAsync<T>(string key);
+
+        /// <summary>
+        /// Gets or sets the value associated with the specified key.
+        /// </summary>
+        /// <typeparam name="T">Type</typeparam>
+        /// <param name="key">The key of the value to get.</param>
+        /// <returns>The value associated with the specified key.</returns>
         T Get<T>(string key);
+
+        /// <summary>
+        /// Gets or sets the value associated with the specified key asynchronosly
+        /// </summary>
+        /// <param name="key">The key of the value to get.</param>
+        /// <returns>The value associated with the specified key.</returns>
+        Task<(T Result, bool FromCache)> TryGetValueAsync<T>(string key);
+
+        /// <summary>
+        /// Gets or sets the value associated with the specified key synchronosly
+        /// </summary>
+        /// <param name="key">The key of the value to get.</param>
+        /// <returns>The value associated with the specified key.</returns>
+        (T Result, bool FromCache) TryGetValue<T>(string key);
+
+        /// <summary>
+        /// Adds the specified key and object to the cache.
+        /// </summary>
+        /// <param name="key">key</param>
+        /// <param name="data">Data</param>
+        /// <param name="cacheTime">Cache time</param>
+        Task SetAsync(string key, object data, int cacheTime);
 
         /// <summary>
         /// Adds the specified key and object to the cache.
@@ -34,17 +65,24 @@ namespace Grand.Core.Caching
         /// Removes the value with the specified key from the cache
         /// </summary>
         /// <param name="key">/key</param>
-        void Remove(string key);
+        Task RemoveAsync(string key);
 
         /// <summary>
         /// Removes items by pattern
         /// </summary>
         /// <param name="pattern">pattern</param>
-        void RemoveByPattern(string pattern);
+        Task RemoveByPattern(string pattern);
+
+        /// <summary>
+        /// Removes items by pattern
+        /// </summary>
+        /// <param name="pattern">pattern</param>
+        Task RemoveByPatternAsync(string pattern);
 
         /// <summary>
         /// Clear all cache data
         /// </summary>
-        void Clear();
+        Task Clear();
+        
     }
 }

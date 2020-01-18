@@ -1,8 +1,8 @@
-﻿using Grand.Framework.Mvc.Models;
-using Microsoft.AspNetCore.Mvc.Rendering;
+﻿using FluentValidation.Attributes;
 using Grand.Framework.Mvc.ModelBinding;
-using FluentValidation.Attributes;
+using Grand.Framework.Mvc.Models;
 using Grand.Web.Areas.Admin.Validators.Customers;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -17,10 +17,10 @@ namespace Grand.Web.Areas.Admin.Models.Customers
         public string Name { get; set; }
 
         [GrandResourceDisplayName("Admin.Customers.CustomerReminder.Fields.StartDate")]
-        public DateTime StartDateTimeUtc { get; set; }
+        public DateTime StartDateTime { get; set; }
 
         [GrandResourceDisplayName("Admin.Customers.CustomerReminder.Fields.EndDate")]
-        public DateTime EndDateTimeUtc { get; set; }
+        public DateTime EndDateTime { get; set; }
 
         [GrandResourceDisplayName("Admin.Customers.CustomerReminder.Fields.LastUpdateDate")]
         public DateTime LastUpdateDate { get; set; }
@@ -179,7 +179,7 @@ namespace Grand.Web.Areas.Admin.Models.Customers
             public string Name { get; set; }
 
             [GrandResourceDisplayName("Admin.Customers.CustomerReminder.Level.Fields.AllowedTokens")]
-            public string AllowedTokens { get; set; }
+            public string[] AllowedTokens { get; set; }
 
             [GrandResourceDisplayName("Admin.Customers.CustomerReminder.Level.Fields.Level")]
             public int Level { get; set; }

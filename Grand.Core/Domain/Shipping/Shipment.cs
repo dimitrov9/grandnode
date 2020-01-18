@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using Grand.Core.Domain.Orders;
 
 namespace Grand.Core.Domain.Shipping
 {
@@ -15,6 +14,11 @@ namespace Grand.Core.Domain.Shipping
         /// Gets or sets the order identifier
         /// </summary>
         public string OrderId { get; set; }
+
+        /// <summary>
+        /// Gets or sets the store identifier
+        /// </summary>
+        public string StoreId { get; set; }
 
         /// <summary>
         /// Gets or sets the vendor identifier

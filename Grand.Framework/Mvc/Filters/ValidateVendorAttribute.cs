@@ -1,9 +1,9 @@
-﻿using System;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Filters;
-using Grand.Core;
+﻿using Grand.Core;
 using Grand.Core.Data;
 using Grand.Core.Domain.Customers;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Filters;
+using System;
 using System.Linq;
 
 namespace Grand.Framework.Mvc.Filters
@@ -45,8 +45,8 @@ namespace Grand.Framework.Mvc.Filters
 
             public ValidateVendorFilter(bool ignoreFilter, IWorkContext workContext)
             {
-                this._ignoreFilter = ignoreFilter;
-                this._workContext = workContext;
+                _ignoreFilter = ignoreFilter;
+                _workContext = workContext;
             }
 
             #endregion

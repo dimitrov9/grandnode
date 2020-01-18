@@ -1,18 +1,17 @@
-﻿using Grand.Framework.Mvc.Models;
-using Grand.Framework.Mvc.ModelBinding;
-using System;
-using System.ComponentModel.DataAnnotations;
-using FluentValidation.Attributes;
-using Grand.Web.Areas.Admin.Validators.Polls;
+﻿using FluentValidation.Attributes;
 using Grand.Framework.Localization;
-using Grand.Web.Areas.Admin.Models.Stores;
+using Grand.Framework.Mapping;
+using Grand.Framework.Mvc.ModelBinding;
+using Grand.Framework.Mvc.Models;
+using Grand.Web.Areas.Admin.Validators.Polls;
+using System;
 using System.Collections.Generic;
-using Grand.Web.Areas.Admin.Models.Customers;
+using System.ComponentModel.DataAnnotations;
 
 namespace Grand.Web.Areas.Admin.Models.Polls
 {
     [Validator(typeof(PollValidator))]
-    public partial class PollModel : BaseGrandEntityModel, ILocalizedModel<PollLocalizedModel>
+    public partial class PollModel : BaseGrandEntityModel, ILocalizedModel<PollLocalizedModel>, IAclMappingModel, IStoreMappingModel
     {
 
         public PollModel()
@@ -54,7 +53,7 @@ namespace Grand.Web.Areas.Admin.Models.Polls
         [GrandResourceDisplayName("Admin.ContentManagement.Polls.Fields.LimitedToStores")]
         public bool LimitedToStores { get; set; }
         [GrandResourceDisplayName("Admin.ContentManagement.Polls.Fields.AvailableStores")]
-        public IList<StoreModel> AvailableStores { get; set; }
+        public List<StoreModel> AvailableStores { get; set; }
         public string[] SelectedStoreIds { get; set; }
         public IList<PollLocalizedModel> Locales { get; set; }
 

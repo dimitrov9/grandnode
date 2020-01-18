@@ -1,39 +1,35 @@
 ﻿using Grand.Framework.Mvc.ModelBinding;
 using Grand.Framework.Mvc.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace Grand.Web.Areas.Admin.Models.PushNotifications
 {
     public class ConfigurationModel : BaseGrandModel
     {
-        [GrandResourceDisplayName("PushNotifications.Fields.NotificationsEnabled")]
+        [GrandResourceDisplayName("Admin.Configuration.Settings.PushNotifications.NotificationsEnabled")]
         public bool Enabled { get; set; }
 
-        [GrandResourceDisplayName("PushNotifications.Fields.PrivateApiKey")]
+        [GrandResourceDisplayName("Admin.Configuration.Settings.PushNotifications.PrivateApiKey")]
         public string PrivateApiKey { get; set; }
 
-        [GrandResourceDisplayName("PushNotifications.Fields.PushApiKey")]
+        [GrandResourceDisplayName("Admin.Configuration.Settings.PushNotifications.PushApiKey")]
         public string PushApiKey { get; set; }
 
-        [GrandResourceDisplayName("PushNotifications.Fields.SenderId")]
+        [GrandResourceDisplayName("Admin.Configuration.Settings.PushNotifications.SenderId")]
         public string SenderId { get; set; }
 
-        [GrandResourceDisplayName("PushNotifications.Fields.AuthDomain")]
+        [GrandResourceDisplayName("Admin.Configuration.Settings.PushNotifications.AuthDomain")]
         public string AuthDomain { get; set; }
 
-        [GrandResourceDisplayName("PushNotifications.Fields.DatabaseUrl")]
+        [GrandResourceDisplayName("Admin.Configuration.Settings.PushNotifications.DatabaseUrl")]
         public string DatabaseUrl { get; set; }
 
-        [GrandResourceDisplayName("PushNotifications.Fields.ProjectId")]
+        [GrandResourceDisplayName("Admin.Configuration.Settings.PushNotifications.ProjectId")]
         public string ProjectId { get; set; }
 
-        [GrandResourceDisplayName("PushNotifications.Fields.StorageBucket")]
+        [GrandResourceDisplayName("Admin.Configuration.Settings.PushNotifications.StorageBucket")]
         public string StorageBucket { get; set; }
 
-        [GrandResourceDisplayName("PushNotifications.Fields.AllowGuestNotifications")]
+        [GrandResourceDisplayName("Admin.Configuration.Settings.PushNotifications.AllowGuestNotifications")]
         public bool AllowGuestNotifications { get; set; }
     }
 }

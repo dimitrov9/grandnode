@@ -1,18 +1,21 @@
 ﻿using Grand.Core.Caching;
 using Grand.Core.Domain.Discounts;
 using Grand.Core.Events;
-using Grand.Core.Infrastructure;
-using Grand.Services.Events;
+using MediatR;
+using Microsoft.Extensions.DependencyInjection;
+using System;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Grand.Services.Discounts.Cache
 {
     /// <summary>
     /// Cache event consumer (used for caching of discount requirements)
     /// </summary>
-    public partial class DiscountRequirementEventConsumer :
+    public abstract class DiscountRequirementEventConsumer :
         //discounts
-        IConsumer<EntityUpdated<Discount>>,
-        IConsumer<EntityDeleted<Discount>>
+        INotificationHandler<EntityUpdated<Discount>>,
+        INotificationHandler<EntityDeleted<Discount>>
 
     {
         /// <summary>
@@ -26,19 +29,19 @@ namespace Grand.Services.Discounts.Cache
 
         private readonly ICacheManager _cacheManager;
 
-        public DiscountRequirementEventConsumer()
+        public DiscountRequirementEventConsumer(IServiceProvider serviceProvider)
         {
-            this._cacheManager = EngineContext.Current.Resolve<ICacheManager>();
+            _cacheManager = serviceProvider.GetRequiredService<ICacheManager>();
         }
 
-        //discounts
-        public void HandleEvent(EntityUpdated<Discount> eventMessage)
+        public async Task Handle(EntityUpdated<Discount> notification, CancellationToken cancellationToken)
         {
-            _cacheManager.RemoveByPattern(DISCOUNT_REQUIREMENT_PATTERN_KEY);
+            await _cacheManager.RemoveByPattern(DISCOUNT_REQUIREMENT_PATTERN_KEY);
         }
-        public void HandleEvent(EntityDeleted<Discount> eventMessage)
+
+        public async Task Handle(EntityDeleted<Discount> notification, CancellationToken cancellationToken)
         {
-            _cacheManager.RemoveByPattern(DISCOUNT_REQUIREMENT_PATTERN_KEY);
+            await _cacheManager.RemoveByPattern(DISCOUNT_REQUIREMENT_PATTERN_KEY);
         }
 
     }

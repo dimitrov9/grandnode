@@ -1,6 +1,6 @@
 ﻿@model SpecificationAttributeModel
-
-@(Html.LocalizedEditor<SpecificationAttributeModel, SpecificationAttributeLocalizedModel>("specificationattribute-localized",
+<vc:admin-widget widget-zone="specification_attribute_details_info_top" additional-data="null" />
+@(await Html.LocalizedEditor<SpecificationAttributeModel, SpecificationAttributeLocalizedModel>("specificationattribute-localized",
     @<div class="form-horizontal">
         <div class="form-body">
             <div class="form-group">
@@ -38,3 +38,4 @@
         </div>
     </div>
 </div>
+<vc:admin-widget widget-zone="specification_attribute_details_info_bottom" additional-data="Model" />

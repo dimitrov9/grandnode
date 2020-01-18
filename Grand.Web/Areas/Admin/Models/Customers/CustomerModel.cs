@@ -1,12 +1,12 @@
-﻿using Grand.Framework.Mvc.Models;
-using Microsoft.AspNetCore.Mvc.Rendering;
+﻿using FluentValidation.Attributes;
+using Grand.Core.Domain.Catalog;
 using Grand.Framework.Mvc.ModelBinding;
+using Grand.Framework.Mvc.Models;
+using Grand.Web.Areas.Admin.Validators.Customers;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using FluentValidation.Attributes;
-using Grand.Web.Areas.Admin.Validators.Customers;
-using Grand.Core.Domain.Catalog;
 
 namespace Grand.Web.Areas.Admin.Models.Customers
 {
@@ -23,6 +23,7 @@ namespace Grand.Web.Areas.Admin.Models.Customers
             this.AvailableCountries = new List<SelectListItem>();
             this.AvailableStates = new List<SelectListItem>();
             this.AvailableVendors = new List<SelectListItem>();
+            this.AvailableStores = new List<SelectListItem>();
             this.CustomerAttributes = new List<CustomerAttributeModel>();
             this.AvailableNewsletterSubscriptionStores = new List<StoreModel>();
             this.RewardPointsAvailableStores = new List<SelectListItem>();
@@ -50,6 +51,10 @@ namespace Grand.Web.Areas.Admin.Models.Customers
         [GrandResourceDisplayName("Admin.Customers.Customers.Fields.Vendor")]
         public string VendorId { get; set; }
         public IList<SelectListItem> AvailableVendors { get; set; }
+
+        [GrandResourceDisplayName("Admin.Customers.Customers.Fields.StaffStore")]
+        public string StaffStoreId { get; set; }
+        public IList<SelectListItem> AvailableStores { get; set; }
 
         //form fields & properties
         public bool GenderEnabled { get; set; }
@@ -134,7 +139,7 @@ namespace Grand.Web.Areas.Admin.Models.Customers
         public string AffiliateId { get; set; }
         [GrandResourceDisplayName("Admin.Customers.Customers.Fields.Affiliate")]
         public string AffiliateName { get; set; }
-
+        public string CustomAttributes { get; set; }
         //time zone
         [GrandResourceDisplayName("Admin.Customers.Customers.Fields.TimeZoneId")]
         
@@ -227,11 +232,6 @@ namespace Grand.Web.Areas.Admin.Models.Customers
         public string AddCustomerNoteDownloadId { get; set; }
 
         #region Nested classes
-
-        public partial class StoreModel : BaseGrandEntityModel
-        {
-            public string Name { get; set; }
-        }
 
         public partial class AssociatedExternalAuthModel : BaseGrandEntityModel
         {
@@ -386,6 +386,7 @@ namespace Grand.Web.Areas.Admin.Models.Customers
             public string ProductId { get; set; }
             [GrandResourceDisplayName("Admin.Customers.Customers.BackInStockSubscriptions.Product")]
             public string ProductName { get; set; }
+            public string AttributeDescription { get; set; }
             [GrandResourceDisplayName("Admin.Customers.Customers.BackInStockSubscriptions.CreatedOn")]
             public DateTime CreatedOn { get; set; }
         }

@@ -1,10 +1,7 @@
-﻿using Grand.Framework.Mvc.Models;
-using Microsoft.AspNetCore.Mvc.Rendering;
-using Grand.Framework.Mvc.ModelBinding;
+﻿using Grand.Framework.Mvc.ModelBinding;
+using Grand.Framework.Mvc.Models;
 using System;
 using System.ComponentModel.DataAnnotations;
-using Grand.Framework;
-using Grand.Framework.Mvc;
 
 namespace Grand.Web.Areas.Admin.Models.Common
 {
@@ -15,11 +12,14 @@ namespace Grand.Web.Areas.Admin.Models.Common
             DeleteGuests = new DeleteGuestsModel();
             DeleteAbandonedCarts = new DeleteAbandonedCartsModel();
             DeleteExportedFiles = new DeleteExportedFilesModel();
+            ConvertedPictureModel = new ConvertPictureModel() { NumberOfConvertItems = -1 };
         }
 
         public DeleteGuestsModel DeleteGuests { get; set; }
         public DeleteAbandonedCartsModel DeleteAbandonedCarts { get; set; }
         public DeleteExportedFilesModel DeleteExportedFiles { get; set; }
+        public ConvertPictureModel ConvertedPictureModel { get; set; }
+
         public bool DeleteActivityLog { get; set; }
 
         #region Nested classes
@@ -60,6 +60,11 @@ namespace Grand.Web.Areas.Admin.Models.Common
             public DateTime? EndDate { get; set; }
 
             public int? NumberOfDeletedFiles { get; set; }
+        }
+
+        public partial class ConvertPictureModel : BaseGrandModel
+        {
+            public int NumberOfConvertItems { get; set; }
         }
 
         #endregion

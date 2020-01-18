@@ -5,15 +5,18 @@ using Grand.Core.Domain.Catalog;
 using Grand.Core.Domain.Customers;
 using Grand.Core.Domain.Localization;
 using Grand.Core.Domain.Orders;
+using Grand.Core.Tests.Caching;
 using Grand.Services.Directory;
 using Grand.Services.Events;
 using Grand.Services.Localization;
 using Grand.Services.Media;
 using Grand.Services.Tax;
 using Grand.Services.Tests;
+using MediatR;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
-
+using System.Threading.Tasks;
 
 namespace Grand.Services.Catalog.Tests
 {
@@ -22,7 +25,7 @@ namespace Grand.Services.Catalog.Tests
         private IRepository<ProductAttribute> _productAttributeRepo;
         private IProductAttributeService _productAttributeService;
         private IProductAttributeParser _productAttributeParser;
-        private IEventPublisher _eventPublisher;
+        private IMediator _eventPublisher;
 
         private IWorkContext _workContext;
         private ICurrencyService _currencyService;
@@ -126,20 +129,20 @@ namespace Grand.Services.Catalog.Tests
             _product.ProductAttributeMappings.Add(pam3_1);
             _productRepo.Insert(_product); //26 april
 
-            var tempEventPublisher = new Mock<IEventPublisher>();
+            var tempEventPublisher = new Mock<IMediator>();
             {
-                tempEventPublisher.Setup(x => x.Publish(It.IsAny<object>()));
+                //tempEventPublisher.Setup(x => x.Publish(It.IsAny<object>()));
                 _eventPublisher = tempEventPublisher.Object;
             }
 
-            var cacheManager = new GrandNullCache();
+            var cacheManager = new TestMemoryCacheManager(new Mock<IMemoryCache>().Object);
             _productAttributeRepo = new Mock<IRepository<ProductAttribute>>().Object;
 
             _productAttributeService = new ProductAttributeService(cacheManager,
                 _productAttributeRepo,
                 _productRepo,
                 _eventPublisher);
-            _productAttributeParser = new ProductAttributeParser(_productAttributeService);
+            _productAttributeParser = new ProductAttributeParser();
             _priceCalculationService = new Mock<IPriceCalculationService>().Object;
 
             var tempWorkContext = new Mock<IWorkContext>();
@@ -248,7 +251,7 @@ namespace Grand.Services.Catalog.Tests
         }
 
         [TestMethod()]
-        public void Can_render_virtual_gift_cart() {
+        public async Task Can_render_virtual_gift_cart() {
             string attributes = _productAttributeParser.AddGiftCardAttribute("",
                 "recipientName 1", "recipientEmail@gmail.com",
                 "senderName 1", "senderEmail@gmail.com", "custom message");
@@ -258,7 +261,7 @@ namespace Grand.Services.Catalog.Tests
                 GiftCardType = GiftCardType.Virtual,
             };
             var customer = new Customer();
-            string formattedAttributes = _productAttributeFormatter.FormatAttributes(product,
+            string formattedAttributes = await _productAttributeFormatter.FormatAttributes(product,
                 attributes, customer, "<br />", false, false, true, true);
             Assert.AreEqual(
                 "From: senderName 1 <senderEmail@gmail.com><br />For: recipientName 1 <recipientEmail@gmail.com>",
@@ -266,7 +269,7 @@ namespace Grand.Services.Catalog.Tests
         }
 
         [TestMethod()]
-        public void Can_render_physical_gift_cart() {
+        public async Task Can_render_physical_gift_cart() {
             string attributes = _productAttributeParser.AddGiftCardAttribute("",
                 "recipientName 1", "recipientEmail@gmail.com",
                 "senderName 1", "senderEmail@gmail.com", "custom message");
@@ -276,7 +279,7 @@ namespace Grand.Services.Catalog.Tests
                 GiftCardType = GiftCardType.Physical,
             };
             var customer = new Customer();
-            string formattedAttributes = _productAttributeFormatter.FormatAttributes(product,
+            string formattedAttributes = await _productAttributeFormatter.FormatAttributes(product,
                 attributes, customer, "<br />", false, false, true, true);
             Assert.AreEqual("From: senderName 1<br />For: recipientName 1", formattedAttributes);
         }

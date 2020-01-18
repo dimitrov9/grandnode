@@ -2,8 +2,8 @@ using Autofac;
 using Grand.Core.Configuration;
 using Grand.Core.Infrastructure;
 using Grand.Core.Infrastructure.DependencyManagement;
-using Grand.Framework.Controllers;
 using Grand.Web.Infrastructure.Installation;
+using Grand.Web.Interfaces;
 using Grand.Web.Services;
 
 namespace Grand.Web.Infrastructure
@@ -71,11 +71,13 @@ namespace Grand.Web.Infrastructure
 
             //vendor service
             builder.RegisterType<VendorViewModelService>().As<IVendorViewModelService>().InstancePerLifetimeScope();
-           
+
+            //course service
+            builder.RegisterType<CourseViewModelService>().As<ICourseViewModelService>().InstancePerLifetimeScope();
+
         }
 
-        public int Order
-        {
+        public int Order {
             get { return 2; }
         }
     }

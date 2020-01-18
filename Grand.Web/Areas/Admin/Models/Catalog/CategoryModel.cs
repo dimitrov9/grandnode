@@ -1,19 +1,19 @@
-﻿using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using FluentValidation.Attributes;
-using Grand.Web.Areas.Admin.Models.Customers;
-using Grand.Web.Areas.Admin.Models.Discounts;
-using Grand.Web.Areas.Admin.Models.Stores;
-using Grand.Web.Areas.Admin.Validators.Catalog;
+﻿using FluentValidation.Attributes;
 using Grand.Framework.Localization;
-using System;
-using Grand.Framework.Mvc.Models;
-using Microsoft.AspNetCore.Mvc.Rendering;
+using Grand.Framework.Mapping;
 using Grand.Framework.Mvc.ModelBinding;
+using Grand.Framework.Mvc.Models;
+using Grand.Web.Areas.Admin.Models.Discounts;
+using Grand.Web.Areas.Admin.Validators.Catalog;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+
 namespace Grand.Web.Areas.Admin.Models.Catalog
 {
     [Validator(typeof(CategoryValidator))]
-    public partial class CategoryModel : BaseGrandEntityModel, ILocalizedModel<CategoryLocalizedModel>
+    public partial class CategoryModel : BaseGrandEntityModel, ILocalizedModel<CategoryLocalizedModel>, IAclMappingModel, IStoreMappingModel
     {
         public CategoryModel()
         {
@@ -24,6 +24,7 @@ namespace Grand.Web.Areas.Admin.Models.Catalog
             Locales = new List<CategoryLocalizedModel>();
             AvailableCategoryTemplates = new List<SelectListItem>();
             AvailableCategories = new List<SelectListItem>();
+            AvailableSortOptions = new List<SelectListItem>();
         }
 
         [GrandResourceDisplayName("Admin.Catalog.Categories.Fields.Name")]
@@ -77,6 +78,9 @@ namespace Grand.Web.Areas.Admin.Models.Catalog
         [GrandResourceDisplayName("Admin.Catalog.Categories.Fields.ShowOnHomePage")]
         public bool ShowOnHomePage { get; set; }
 
+        [GrandResourceDisplayName("Admin.Catalog.Categories.Fields.FeaturedProductsOnHomaPage")]
+        public bool FeaturedProductsOnHomaPage { get; set; }
+
         [GrandResourceDisplayName("Admin.Catalog.Categories.Fields.IncludeInTopMenu")]
         public bool IncludeInTopMenu { get; set; }
 
@@ -95,8 +99,16 @@ namespace Grand.Web.Areas.Admin.Models.Catalog
         [GrandResourceDisplayName("Admin.Catalog.Categories.Fields.FlagStyle")]
         public string FlagStyle { get; set; }
 
+        [GrandResourceDisplayName("Admin.Catalog.Categories.Fields.Icon")]
+        public string Icon { get; set; }
+
         [GrandResourceDisplayName("Admin.Catalog.Categories.Fields.HideOnCatalog")]
         public bool HideOnCatalog { get; set; }
+
+        [GrandResourceDisplayName("Admin.Catalog.Categories.Fields.DefaultSort")]
+        public int DefaultSort { get; set; }
+        public IList<SelectListItem> AvailableSortOptions { get; set; }
+
 
         public IList<CategoryLocalizedModel> Locales { get; set; }
 
@@ -122,7 +134,6 @@ namespace Grand.Web.Areas.Admin.Models.Catalog
         public List<StoreModel> AvailableStores { get; set; }
         public string[] SelectedStoreIds { get; set; }
 
-
         public IList<SelectListItem> AvailableCategories { get; set; }
 
 
@@ -132,7 +143,7 @@ namespace Grand.Web.Areas.Admin.Models.Catalog
 
 
         #region Nested classes
-
+        [Validator(typeof(CategoryProductModelValidator))]
         public partial class CategoryProductModel : BaseGrandEntityModel
         {
             public string CategoryId { get; set; }
@@ -148,7 +159,7 @@ namespace Grand.Web.Areas.Admin.Models.Catalog
             [GrandResourceDisplayName("Admin.Catalog.Categories.Products.Fields.DisplayOrder")]
             public int DisplayOrder { get; set; }
         }
-
+        [Validator(typeof(AddCategoryProductModelValidator))]
         public partial class AddCategoryProductModel : BaseGrandModel
         {
             public AddCategoryProductModel()
@@ -202,33 +213,36 @@ namespace Grand.Web.Areas.Admin.Models.Catalog
         #endregion
     }
 
-    public partial class CategoryLocalizedModel : ILocalizedModelLocal
+    public partial class CategoryLocalizedModel : ILocalizedModelLocal, ISlugModelLocal
     {
         public string LanguageId { get; set; }
 
         [GrandResourceDisplayName("Admin.Catalog.Categories.Fields.Name")]
-        
+
         public string Name { get; set; }
 
         [GrandResourceDisplayName("Admin.Catalog.Categories.Fields.Description")]
-        
-        public string Description {get;set;}
+
+        public string Description { get; set; }
 
         [GrandResourceDisplayName("Admin.Catalog.Categories.Fields.MetaKeywords")]
-        
+
         public string MetaKeywords { get; set; }
 
         [GrandResourceDisplayName("Admin.Catalog.Categories.Fields.MetaDescription")]
-        
+
         public string MetaDescription { get; set; }
 
         [GrandResourceDisplayName("Admin.Catalog.Categories.Fields.MetaTitle")]
-        
+
         public string MetaTitle { get; set; }
 
         [GrandResourceDisplayName("Admin.Catalog.Categories.Fields.SeName")]
-        
+
         public string SeName { get; set; }
+
+        [GrandResourceDisplayName("Admin.Catalog.Products.Fields.Flag")]
+        public string Flag { get; set; }
     }
 
 }

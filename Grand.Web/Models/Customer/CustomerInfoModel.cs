@@ -1,11 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using FluentValidation.Attributes;
-using Grand.Framework.Mvc.Models;
-using Grand.Web.Validators.Customer;
+﻿using FluentValidation.Attributes;
 using Grand.Framework.Mvc.ModelBinding;
-using Microsoft.AspNetCore.Mvc.Rendering;
+using Grand.Framework.Mvc.Models;
 using Grand.Web.Models.Newsletter;
+using Grand.Web.Validators.Customer;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using System;
+using System.Collections.Generic;
 
 namespace Grand.Web.Models.Customer
 {
@@ -14,12 +14,12 @@ namespace Grand.Web.Models.Customer
     {
         public CustomerInfoModel()
         {
-            this.AvailableTimeZones = new List<SelectListItem>();
-            this.AvailableCountries = new List<SelectListItem>();
-            this.AvailableStates = new List<SelectListItem>();
-            this.AssociatedExternalAuthRecords = new List<AssociatedExternalAuthModel>();
-            this.CustomerAttributes = new List<CustomerAttributeModel>();
-            this.NewsletterCategories = new List<NewsletterSimpleCategory>();
+            AvailableTimeZones = new List<SelectListItem>();
+            AvailableCountries = new List<SelectListItem>();
+            AvailableStates = new List<SelectListItem>();
+            AssociatedExternalAuthRecords = new List<AssociatedExternalAuthModel>();
+            CustomerAttributes = new List<CustomerAttributeModel>();
+            NewsletterCategories = new List<NewsletterSimpleCategory>();
         }
 
         [GrandResourceDisplayName("Account.Fields.Email")]

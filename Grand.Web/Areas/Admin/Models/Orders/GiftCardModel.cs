@@ -1,13 +1,12 @@
-﻿using Grand.Framework.Mvc.Models;
-using Microsoft.AspNetCore.Mvc.Rendering;
+﻿using FluentValidation.Attributes;
 using Grand.Framework.Mvc.ModelBinding;
+using Grand.Framework.Mvc.Models;
+using Grand.Web.Areas.Admin.Validators.Orders;
 using System;
-
-using Grand.Framework;
-using Grand.Framework.Mvc;
 
 namespace Grand.Web.Areas.Admin.Models.Orders
 {
+    [Validator(typeof(GiftCardValidator))]
     public partial class GiftCardModel: BaseGrandEntityModel
     {
         [GrandResourceDisplayName("Admin.GiftCards.Fields.GiftCardType")]

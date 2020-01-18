@@ -1,39 +1,44 @@
-﻿using System;
-using Grand.Core.Domain.Catalog;
+﻿using Grand.Core.Domain.Catalog;
 using Grand.Core.Domain.Common;
+using Grand.Core.Domain.Courses;
+using Grand.Core.Domain.Localization;
 using Grand.Services.Localization;
 using Grand.Services.Seo;
 using Grand.Web.Models.Catalog;
 using Grand.Web.Models.Common;
+using Grand.Web.Models.Course;
 using Grand.Web.Models.Vendors;
+using System;
 
 namespace Grand.Web.Extensions
 {
     public static class MappingExtensions
     {
         //category
-        public static CategoryModel ToModel(this Category entity)
+        public static CategoryModel ToModel(this Category entity, Language language)
         {
             if (entity == null)
                 return null;
 
-            var model = new CategoryModel
-            {
+            var model = new CategoryModel {
                 Id = entity.Id,
-                Name = entity.GetLocalized(x => x.Name),
-                Description = entity.GetLocalized(x => x.Description),
-                MetaKeywords = entity.GetLocalized(x => x.MetaKeywords),
-                MetaDescription = entity.GetLocalized(x => x.MetaDescription),
-                MetaTitle = entity.GetLocalized(x => x.MetaTitle),
-                SeName = entity.GetSeName(),
-                Flag = entity.Flag,
-                FlagStyle = entity.FlagStyle
+                ParentCategoryId = entity.ParentCategoryId,
+                Name = entity.GetLocalized(x => x.Name, language.Id),
+                Description = entity.GetLocalized(x => x.Description, language.Id),
+                MetaKeywords = entity.GetLocalized(x => x.MetaKeywords, language.Id),
+                MetaDescription = entity.GetLocalized(x => x.MetaDescription, language.Id),
+                MetaTitle = entity.GetLocalized(x => x.MetaTitle, language.Id),
+                SeName = entity.GetSeName(language.Id),
+                Flag = entity.GetLocalized(x => x.Flag, language.Id),
+                FlagStyle = entity.FlagStyle,
+                Icon = entity.Icon,
+                GenericAttributes = entity.GenericAttributes
             };
             return model;
         }
 
         //manufacturer
-        public static ManufacturerModel ToModel(this Manufacturer entity)
+        public static ManufacturerModel ToModel(this Manufacturer entity, Language language)
         {
             if (entity == null)
                 return null;
@@ -41,12 +46,34 @@ namespace Grand.Web.Extensions
             var model = new ManufacturerModel
             {
                 Id = entity.Id,
-                Name = entity.GetLocalized(x => x.Name),
-                Description = entity.GetLocalized(x => x.Description),
-                MetaKeywords = entity.GetLocalized(x => x.MetaKeywords),
-                MetaDescription = entity.GetLocalized(x => x.MetaDescription),
-                MetaTitle = entity.GetLocalized(x => x.MetaTitle),
-                SeName = entity.GetSeName(),
+                Name = entity.GetLocalized(x => x.Name, language.Id),
+                Description = entity.GetLocalized(x => x.Description, language.Id),
+                MetaKeywords = entity.GetLocalized(x => x.MetaKeywords, language.Id),
+                MetaDescription = entity.GetLocalized(x => x.MetaDescription, language.Id),
+                MetaTitle = entity.GetLocalized(x => x.MetaTitle, language.Id),
+                SeName = entity.GetSeName(language.Id),
+                Icon = entity.Icon,
+                GenericAttributes = entity.GenericAttributes
+            };
+            return model;
+        }
+
+        //course
+        public static CourseModel ToModel(this Course entity, Language language)
+        {
+            if (entity == null)
+                return null;
+
+            var model = new CourseModel {
+                Id = entity.Id,
+                Name = entity.GetLocalized(x => x.Name, language.Id),
+                Description = entity.GetLocalized(x => x.Description, language.Id),
+                ShortDescription = entity.GetLocalized(x => x.ShortDescription, language.Id),
+                MetaKeywords = entity.GetLocalized(x => x.MetaKeywords, language.Id),
+                MetaDescription = entity.GetLocalized(x => x.MetaDescription, language.Id),
+                MetaTitle = entity.GetLocalized(x => x.MetaTitle, language.Id),
+                SeName = entity.GetSeName(language.Id),
+                GenericAttributes = entity.GenericAttributes
             };
             return model;
         }
@@ -103,7 +130,7 @@ namespace Grand.Web.Extensions
             destination.ZipPostalCode = model.ZipPostalCode;
             destination.PhoneNumber = model.PhoneNumber;
             destination.FaxNumber = model.FaxNumber;
-
+            
             return destination;
         }
 
@@ -141,6 +168,5 @@ namespace Grand.Web.Extensions
 
             return destination;
         }
-
     }
 }

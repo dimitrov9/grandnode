@@ -1,6 +1,7 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Grand.Web.Services;
-using Grand.Framework.Components;
+﻿using Grand.Framework.Components;
+using Grand.Web.Interfaces;
+using Microsoft.AspNetCore.Mvc;
+using System.Threading.Tasks;
 
 namespace Grand.Web.ViewComponents
 {
@@ -10,14 +11,13 @@ namespace Grand.Web.ViewComponents
 
         public ExternalMethodsViewComponent(IExternalAuthenticationViewModelService externalAuthenticationViewModelService)
         {
-            this._externalAuthenticationViewModelService = externalAuthenticationViewModelService;
+            _externalAuthenticationViewModelService = externalAuthenticationViewModelService;
         }
 
         public IViewComponentResult Invoke()
         {
-            var model = _externalAuthenticationViewModelService.PrepereExternalAuthenticationMethodModel();
+            var model =  _externalAuthenticationViewModelService.PrepereExternalAuthenticationMethodModel();
             return View(model);
-
         }
     }
 }

@@ -4,6 +4,7 @@ using Grand.Framework.Controllers;
 using Grand.Framework.Mvc.Filters;
 using Microsoft.AspNetCore.Mvc;
 using Grand.Services.Localization;
+using System.Threading.Tasks;
 
 namespace Grand.Plugin.Payments.PayInStore.Controllers
 {
@@ -17,9 +18,9 @@ namespace Grand.Plugin.Payments.PayInStore.Controllers
 
         public PaymentPayInStoreController(ISettingService settingService, PayInStorePaymentSettings payInStorePaymentSettings, ILocalizationService localizationService)
         {
-            this._settingService = settingService;
-            this._payInStorePaymentSettings = payInStorePaymentSettings;
-            this._localizationService = localizationService;
+            _settingService = settingService;
+            _payInStorePaymentSettings = payInStorePaymentSettings;
+            _localizationService = localizationService;
         }
 
         public IActionResult Configure()
@@ -33,7 +34,7 @@ namespace Grand.Plugin.Payments.PayInStore.Controllers
         }
 
         [HttpPost]
-        public IActionResult Configure(ConfigurationModel model)
+        public async Task<IActionResult> Configure(ConfigurationModel model)
         {
             if (!ModelState.IsValid)
                 return Configure();
@@ -42,7 +43,7 @@ namespace Grand.Plugin.Payments.PayInStore.Controllers
             _payInStorePaymentSettings.DescriptionText = model.DescriptionText;
             _payInStorePaymentSettings.AdditionalFee = model.AdditionalFee;
             _payInStorePaymentSettings.AdditionalFeePercentage = model.AdditionalFeePercentage;
-            _settingService.SaveSetting(_payInStorePaymentSettings);
+            await _settingService.SaveSetting(_payInStorePaymentSettings);
 
             SuccessNotification(_localizationService.GetResource("Admin.Plugins.Saved"));
 

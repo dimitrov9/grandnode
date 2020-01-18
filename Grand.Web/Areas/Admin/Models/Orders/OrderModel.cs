@@ -1,15 +1,13 @@
-﻿using Grand.Framework.Mvc.Models;
-using Microsoft.AspNetCore.Mvc.Rendering;
+using Grand.Core.Domain.Catalog;
+using Grand.Core.Domain.Payments;
+using Grand.Core.Domain.Tax;
 using Grand.Framework.Mvc.ModelBinding;
+using Grand.Framework.Mvc.Models;
+using Grand.Web.Areas.Admin.Models.Common;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-
-using Grand.Web.Areas.Admin.Models.Common;
-using Grand.Core.Domain.Catalog;
-using Grand.Core.Domain.Tax;
-using Grand.Framework;
-using Grand.Framework.Mvc;
 
 namespace Grand.Web.Areas.Admin.Models.Orders
 {
@@ -101,7 +99,12 @@ namespace Grand.Web.Areas.Admin.Models.Orders
         public string RefundedAmount { get; set; }
         [GrandResourceDisplayName("Admin.Orders.Fields.Profit")]
         public string Profit { get; set; }
+        [GrandResourceDisplayName("Admin.Orders.Fields.Currency")]
+        public string CurrencyCode { get; set; }
+        [GrandResourceDisplayName("Admin.Orders.Fields.CurrencyRate")]
 
+        [UIHint("DecimalN4")]
+        public decimal CurrencyRate { get; set; }
         //edit totals
         [GrandResourceDisplayName("Admin.Orders.Fields.Edit.OrderSubtotal")]
         public decimal OrderSubtotalInclTaxValue { get; set; }
@@ -141,6 +144,7 @@ namespace Grand.Web.Areas.Admin.Models.Orders
         //payment info
         [GrandResourceDisplayName("Admin.Orders.Fields.PaymentStatus")]
         public string PaymentStatus { get; set; }
+        public PaymentStatus PaymentStatusEnum { get; set; }
         [GrandResourceDisplayName("Admin.Orders.Fields.PaymentMethod")]
         public string PaymentMethod { get; set; }
 
@@ -283,6 +287,9 @@ namespace Grand.Web.Areas.Admin.Models.Orders
             public DownloadActivationType DownloadActivationType { get; set; }
             public bool IsDownloadActivated { get; set; }
             public Guid LicenseDownloadGuid { get; set; }
+
+            public string Commission { get; set; }
+            public decimal CommissionValue { get; set; } 
         }
 
         public partial class TaxRate : BaseGrandModel
@@ -311,6 +318,8 @@ namespace Grand.Web.Areas.Admin.Models.Orders
             public Guid DownloadGuid { get; set; }
             [GrandResourceDisplayName("Admin.Orders.OrderNotes.Fields.CreatedOn")]
             public DateTime CreatedOn { get; set; }
+            [GrandResourceDisplayName("Admin.Orders.OrderNotes.Fields.CreatedByCustomer")]
+            public bool CreatedByCustomer { get; set; }
         }
 
         public partial class UploadLicenseModel : BaseGrandModel
@@ -434,19 +443,19 @@ namespace Grand.Web.Areas.Admin.Models.Orders
             {
                 public bool IsGiftCard { get; set; }
 
-                [GrandResourceDisplayName("Products.GiftCard.RecipientName")]
+                [GrandResourceDisplayName("Admin.Orders.Products.GiftCard.RecipientName")]
                 
                 public string RecipientName { get; set; }
-                [GrandResourceDisplayName("Products.GiftCard.RecipientEmail")]
+                [GrandResourceDisplayName("Admin.Orders.Products.GiftCard.RecipientEmail")]
                 
                 public string RecipientEmail { get; set; }
-                [GrandResourceDisplayName("Products.GiftCard.SenderName")]
+                [GrandResourceDisplayName("Admin.Orders.Products.GiftCard.SenderName")]
                 
                 public string SenderName { get; set; }
-                [GrandResourceDisplayName("Products.GiftCard.SenderEmail")]
+                [GrandResourceDisplayName("Admin.Orders.Products.GiftCard.SenderEmail")]
                 
                 public string SenderEmail { get; set; }
-                [GrandResourceDisplayName("Products.GiftCard.Message")]
+                [GrandResourceDisplayName("Admin.Orders.Products.GiftCard.Message")]
                 
                 public string Message { get; set; }
 

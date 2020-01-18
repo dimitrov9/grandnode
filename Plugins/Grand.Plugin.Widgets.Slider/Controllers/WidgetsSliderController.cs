@@ -1,14 +1,20 @@
-﻿using Grand.Core;
-using Grand.Core.Caching;
+﻿using Grand.Framework.Controllers;
+using Grand.Framework.Kendoui;
+using Grand.Framework.Mvc;
+using Grand.Framework.Mvc.Filters;
 using Grand.Plugin.Widgets.Slider.Models;
-using Grand.Services.Configuration;
+using Grand.Plugin.Widgets.Slider.Services;
+using Grand.Services.Catalog;
 using Grand.Services.Localization;
 using Grand.Services.Media;
+using Grand.Services.Security;
 using Grand.Services.Stores;
-using Grand.Framework.Controllers;
-using System;
-using Grand.Framework.Mvc.Filters;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Grand.Plugin.Widgets.Slider.Controllers
 {
@@ -16,181 +22,223 @@ namespace Grand.Plugin.Widgets.Slider.Controllers
     [Area("Admin")]
     public class WidgetsSliderController : BasePluginController
     {
-        private readonly IWorkContext _workContext;
-        private readonly IStoreContext _storeContext;
         private readonly IStoreService _storeService;
         private readonly IPictureService _pictureService;
-        private readonly ISettingService _settingService;
-        private readonly ICacheManager _cacheManager;
         private readonly ILocalizationService _localizationService;
+        private readonly ISliderService _sliderService;
+        private readonly ILanguageService _languageService;
+        private readonly IPermissionService _permissionService;
+        private readonly ICategoryService _categoryService;
+        private readonly IManufacturerService _manufacturerService;
 
-        public WidgetsSliderController(IWorkContext workContext,
-            IStoreContext storeContext,
-            IStoreService storeService, 
+        public WidgetsSliderController(
+            IStoreService storeService,
             IPictureService pictureService,
-            ISettingService settingService,
-            ICacheManager cacheManager,
-            ILocalizationService localizationService)
+            ILocalizationService localizationService,
+            ISliderService sliderService,
+            ILanguageService languageService,
+            IPermissionService permissionService,
+            ICategoryService categoryService,
+            IManufacturerService manufacturerService)
         {
-            this._workContext = workContext;
-            this._storeContext = storeContext;
-            this._storeService = storeService;
-            this._pictureService = pictureService;
-            this._settingService = settingService;
-            this._cacheManager = cacheManager;
-            this._localizationService = localizationService;
+            _storeService = storeService;
+            _pictureService = pictureService;
+            _localizationService = localizationService;
+            _sliderService = sliderService;
+            _languageService = languageService;
+            _permissionService = permissionService;
+            _categoryService = categoryService;
+            _manufacturerService = manufacturerService;
         }
 
-        public IActionResult Configure()
+        protected virtual async Task PrepareAllCategoriesModel(SlideModel model)
         {
-            //load settings for a chosen store scope
-            var storeScope = this.GetActiveStoreScopeConfiguration(_storeService, _workContext);
-            var sliderSettings = _settingService.LoadSetting<SliderSettings>(storeScope);
-            var model = new ConfigurationModel();
-            model.Picture1Id = sliderSettings.Picture1Id;
-            model.Text1 = sliderSettings.Text1;
-            model.Link1 = sliderSettings.Link1;
-            model.Picture2Id = sliderSettings.Picture2Id;
-            model.Text2 = sliderSettings.Text2;
-            model.Link2 = sliderSettings.Link2;
-            model.Picture3Id = sliderSettings.Picture3Id;
-            model.Text3 = sliderSettings.Text3;
-            model.Link3 = sliderSettings.Link3;
-            model.Picture4Id = sliderSettings.Picture4Id;
-            model.Text4 = sliderSettings.Text4;
-            model.Link4 = sliderSettings.Link4;
-            model.Picture5Id = sliderSettings.Picture5Id;
-            model.Text5 = sliderSettings.Text5;
-            model.Link5 = sliderSettings.Link5;
-            model.ActiveStoreScopeConfiguration = storeScope;
-            if (!String.IsNullOrEmpty(storeScope))
+            if (model == null)
+                throw new ArgumentNullException("model");
+
+            model.AvailableCategories.Add(new SelectListItem
             {
-                model.Picture1Id_OverrideForStore = _settingService.SettingExists(sliderSettings, x => x.Picture1Id, storeScope);
-                model.Text1_OverrideForStore = _settingService.SettingExists(sliderSettings, x => x.Text1, storeScope);
-                model.Link1_OverrideForStore = _settingService.SettingExists(sliderSettings, x => x.Link1, storeScope);
-                model.Picture2Id_OverrideForStore = _settingService.SettingExists(sliderSettings, x => x.Picture2Id, storeScope);
-                model.Text2_OverrideForStore = _settingService.SettingExists(sliderSettings, x => x.Text2, storeScope);
-                model.Link2_OverrideForStore = _settingService.SettingExists(sliderSettings, x => x.Link2, storeScope);
-                model.Picture3Id_OverrideForStore = _settingService.SettingExists(sliderSettings, x => x.Picture3Id, storeScope);
-                model.Text3_OverrideForStore = _settingService.SettingExists(sliderSettings, x => x.Text3, storeScope);
-                model.Link3_OverrideForStore = _settingService.SettingExists(sliderSettings, x => x.Link3, storeScope);
-                model.Picture4Id_OverrideForStore = _settingService.SettingExists(sliderSettings, x => x.Picture4Id, storeScope);
-                model.Text4_OverrideForStore = _settingService.SettingExists(sliderSettings, x => x.Text4, storeScope);
-                model.Link4_OverrideForStore = _settingService.SettingExists(sliderSettings, x => x.Link4, storeScope);
-                model.Picture5Id_OverrideForStore = _settingService.SettingExists(sliderSettings, x => x.Picture5Id, storeScope);
-                model.Text5_OverrideForStore = _settingService.SettingExists(sliderSettings, x => x.Text5, storeScope);
-                model.Link5_OverrideForStore = _settingService.SettingExists(sliderSettings, x => x.Link5, storeScope);
+                Text = "[None]",
+                Value = ""
+            });
+            var categories = await _categoryService.GetAllCategories(showHidden: true);
+            foreach (var c in categories)
+            {
+                model.AvailableCategories.Add(new SelectListItem
+                {
+                    Text = c.GetFormattedBreadCrumb(categories),
+                    Value = c.Id.ToString()
+                });
+            }
+        }
+        protected virtual async Task PrepareAllManufacturersModel(SlideModel model)
+        {
+            if (model == null)
+                throw new ArgumentNullException("model");
+
+            model.AvailableManufacturers.Add(new SelectListItem
+            {
+                Text = "[None]",
+                Value = ""
+            });
+            var manufacturers = await _manufacturerService.GetAllManufacturers(showHidden: true);
+            foreach (var m in manufacturers)
+            {
+                model.AvailableManufacturers.Add(new SelectListItem
+                {
+                    Text = m.Name,
+                    Value = m.Id.ToString()
+                });
+            }
+        }
+
+        public async Task<IActionResult> Configure()
+        {
+            if (!await _permissionService.Authorize(StandardPermissionProvider.ManagePlugins))
+                return AccessDeniedView();
+
+            return View("~/Plugins/Widgets.Slider/Views/List.cshtml");
+        }
+        [HttpPost]
+        public async Task<IActionResult> List(DataSourceRequest command)
+        {
+            if (!await _permissionService.Authorize(StandardPermissionProvider.ManagePlugins))
+                return AccessDeniedView();
+
+            var sliders = await _sliderService.GetPictureSliders();
+
+            var items = new List<SlideListModel>();
+            foreach (var x in sliders)
+            {
+                var model = x.ToListModel();
+                var picture = await _pictureService.GetPictureById(x.PictureId);
+                if (picture != null)
+                {
+                    model.PictureUrl = await _pictureService.GetPictureUrl(picture, 150);
+                }
+                items.Add(model);
+            }
+            var gridModel = new DataSourceResult
+            {
+                Data = items,
+                Total = sliders.Count
+            };
+            return Json(gridModel);
+        }
+
+        public async Task<IActionResult> Create()
+        {
+            if (!await _permissionService.Authorize(StandardPermissionProvider.ManagePlugins))
+                return AccessDeniedView();
+
+            var model = new SlideModel();
+            //locales
+            await AddLocales(_languageService, model.Locales);
+            //Stores
+            await model.PrepareStoresMappingModel(null, false, _storeService);
+            //Categories 
+            await PrepareAllCategoriesModel(model);
+            //Manufacturers
+            await PrepareAllManufacturersModel(model);
+            return View("~/Plugins/Widgets.Slider/Views/Create.cshtml", model);
+        }
+        [HttpPost, ParameterBasedOnFormName("save-continue", "continueEditing")]
+        public async Task<IActionResult> Create(SlideModel model, bool continueEditing)
+        {
+            if (!await _permissionService.Authorize(StandardPermissionProvider.ManagePlugins))
+                return AccessDeniedView();
+
+            if (ModelState.IsValid)
+            {
+                var pictureSlider = model.ToEntity();
+                pictureSlider.Locales = model.Locales.ToLocalizedProperty();
+                pictureSlider.Stores = model.SelectedStoreIds != null ? model.SelectedStoreIds.ToList() : new List<string>();
+
+                await _sliderService.InsertPictureSlider(pictureSlider);
+
+                SuccessNotification(_localizationService.GetResource("Plugins.Widgets.Slider.Added"));
+                return continueEditing ? RedirectToAction("Edit", new { id = pictureSlider.Id }) : RedirectToAction("Configure");
+
             }
 
-            return View("~/Plugins/Widgets.Slider/Views/Configure.cshtml", model);
-        }
+            //Stores
+            await model.PrepareStoresMappingModel(null, true, _storeService);
+            //Categories 
+            await PrepareAllCategoriesModel(model);
+            //Manufacturers
+            await PrepareAllManufacturersModel(model);
 
-        [HttpPost]
-        public IActionResult Configure(ConfigurationModel model)
+            return View("~/Plugins/Widgets.Slider/Views/Create.cshtml", model);
+        }
+        public async Task<IActionResult> Edit(string id)
         {
-            //load settings for a chosen store scope
-            var storeScope = this.GetActiveStoreScopeConfiguration(_storeService, _workContext);
-            var sliderSettings = _settingService.LoadSetting<SliderSettings>(storeScope);
-            sliderSettings.Picture1Id = model.Picture1Id;
-            sliderSettings.Text1 = model.Text1;
-            sliderSettings.Link1 = model.Link1;
-            sliderSettings.Picture2Id = model.Picture2Id;
-            sliderSettings.Text2 = model.Text2;
-            sliderSettings.Link2 = model.Link2;
-            sliderSettings.Picture3Id = model.Picture3Id;
-            sliderSettings.Text3 = model.Text3;
-            sliderSettings.Link3 = model.Link3;
-            sliderSettings.Picture4Id = model.Picture4Id;
-            sliderSettings.Text4 = model.Text4;
-            sliderSettings.Link4 = model.Link4;
-            sliderSettings.Picture5Id = model.Picture5Id;
-            sliderSettings.Text5 = model.Text5;
-            sliderSettings.Link5 = model.Link5;
+            if (!await _permissionService.Authorize(StandardPermissionProvider.ManagePlugins))
+                return AccessDeniedView();
 
-            /* We do not clear cache after each setting update.
-             * This behavior can increase performance because cached settings will not be cleared 
-             * and loaded from database after each update */
-            if (model.Picture1Id_OverrideForStore || String.IsNullOrEmpty(storeScope))
-                _settingService.SaveSetting(sliderSettings, x => x.Picture1Id, storeScope, false);
-            else if (!String.IsNullOrEmpty(storeScope))
-                _settingService.DeleteSetting(sliderSettings, x => x.Picture1Id, storeScope);
-            
-            if (model.Text1_OverrideForStore || String.IsNullOrEmpty(storeScope))
-                _settingService.SaveSetting(sliderSettings, x => x.Text1, storeScope, false);
-            else if (!String.IsNullOrEmpty(storeScope))
-                _settingService.DeleteSetting(sliderSettings, x => x.Text1, storeScope);
-            
-            if (model.Link1_OverrideForStore || String.IsNullOrEmpty(storeScope))
-                _settingService.SaveSetting(sliderSettings, x => x.Link1, storeScope, false);
-            else if (!String.IsNullOrEmpty(storeScope))
-                _settingService.DeleteSetting(sliderSettings, x => x.Link1, storeScope);
-            
-            if (model.Picture2Id_OverrideForStore || String.IsNullOrEmpty(storeScope))
-                _settingService.SaveSetting(sliderSettings, x => x.Picture2Id, storeScope, false);
-            else if (!String.IsNullOrEmpty(storeScope))
-                _settingService.DeleteSetting(sliderSettings, x => x.Picture2Id, storeScope);
-            
-            if (model.Text2_OverrideForStore || String.IsNullOrEmpty(storeScope))
-                _settingService.SaveSetting(sliderSettings, x => x.Text2, storeScope, false);
-            else if (!String.IsNullOrEmpty(storeScope))
-                _settingService.DeleteSetting(sliderSettings, x => x.Text2, storeScope);
-            
-            if (model.Link2_OverrideForStore || String.IsNullOrEmpty(storeScope))
-                _settingService.SaveSetting(sliderSettings, x => x.Link2, storeScope, false);
-            else if (!String.IsNullOrEmpty(storeScope))
-                _settingService.DeleteSetting(sliderSettings, x => x.Link2, storeScope);
-            
-            if (model.Picture3Id_OverrideForStore || String.IsNullOrEmpty(storeScope))
-                _settingService.SaveSetting(sliderSettings, x => x.Picture3Id, storeScope, false);
-            else if (!String.IsNullOrEmpty(storeScope))
-                _settingService.DeleteSetting(sliderSettings, x => x.Picture3Id, storeScope);
-            
-            if (model.Text3_OverrideForStore || String.IsNullOrEmpty(storeScope))
-                _settingService.SaveSetting(sliderSettings, x => x.Text3, storeScope, false);
-            else if (!String.IsNullOrEmpty(storeScope))
-                _settingService.DeleteSetting(sliderSettings, x => x.Text3, storeScope);
-            
-            if (model.Link3_OverrideForStore || String.IsNullOrEmpty(storeScope))
-                _settingService.SaveSetting(sliderSettings, x => x.Link3, storeScope, false);
-            else if (!String.IsNullOrEmpty(storeScope))
-                _settingService.DeleteSetting(sliderSettings, x => x.Link3, storeScope);
-            
-            if (model.Picture4Id_OverrideForStore || String.IsNullOrEmpty(storeScope))
-                _settingService.SaveSetting(sliderSettings, x => x.Picture4Id, storeScope, false);
-            else if (!String.IsNullOrEmpty(storeScope))
-                _settingService.DeleteSetting(sliderSettings, x => x.Picture4Id, storeScope);
-            
-            if (model.Text4_OverrideForStore || String.IsNullOrEmpty(storeScope))
-                _settingService.SaveSetting(sliderSettings, x => x.Text4, storeScope, false);
-            else if (!String.IsNullOrEmpty(storeScope))
-                _settingService.DeleteSetting(sliderSettings, x => x.Text4, storeScope);
+            var slide = await _sliderService.GetById(id);
+            if (slide == null)
+                return RedirectToAction("Configure");
 
-            if (model.Link4_OverrideForStore || String.IsNullOrEmpty(storeScope))
-                _settingService.SaveSetting(sliderSettings, x => x.Link4, storeScope, false);
-            else if (!String.IsNullOrEmpty(storeScope))
-                _settingService.DeleteSetting(sliderSettings, x => x.Link4, storeScope);
+            var model = slide.ToModel();
 
-            if (model.Picture5Id_OverrideForStore || String.IsNullOrEmpty(storeScope))
-                _settingService.SaveSetting(sliderSettings, x => x.Picture5Id, storeScope, false);
-            else if (!String.IsNullOrEmpty(storeScope))
-                _settingService.DeleteSetting(sliderSettings, x => x.Picture5Id, storeScope);
+            //locales
+            await AddLocales(_languageService, model.Locales, (locale, languageId) =>
+            {
+                locale.Name = slide.GetLocalized(x => x.Name, languageId, false, false);
+                locale.Description = slide.GetLocalized(x => x.Description, languageId, false, false);
+            });
+            //Stores
+            await model.PrepareStoresMappingModel(slide, false, _storeService);
+            //Categories 
+            await PrepareAllCategoriesModel(model);
+            //Manufacturers
+            await PrepareAllManufacturersModel(model);
 
-            if (model.Text5_OverrideForStore || String.IsNullOrEmpty(storeScope))
-                _settingService.SaveSetting(sliderSettings, x => x.Text5, storeScope, false);
-            else if (!String.IsNullOrEmpty(storeScope))
-                _settingService.DeleteSetting(sliderSettings, x => x.Text5, storeScope);
-
-            if (model.Link5_OverrideForStore || String.IsNullOrEmpty(storeScope))
-                _settingService.SaveSetting(sliderSettings, x => x.Link5, storeScope, false);
-            else if (!String.IsNullOrEmpty(storeScope))
-                _settingService.DeleteSetting(sliderSettings, x => x.Link5, storeScope);
-            
-            //now clear settings cache
-            _settingService.ClearCache();
-
-            SuccessNotification(_localizationService.GetResource("Admin.Plugins.Saved"));
-            return Configure();
+            return View("~/Plugins/Widgets.Slider/Views/Edit.cshtml", model);
         }
 
+        [HttpPost, ParameterBasedOnFormName("save-continue", "continueEditing")]
+        public async Task<IActionResult> Edit(SlideModel model, bool continueEditing)
+        {
+            if (!await _permissionService.Authorize(StandardPermissionProvider.ManagePlugins))
+                return AccessDeniedView();
+
+            var pictureSlider = await _sliderService.GetById(model.Id);
+            if (pictureSlider == null)
+                return RedirectToAction("Configure");
+
+            if (ModelState.IsValid)
+            {
+                pictureSlider = model.ToEntity();
+                pictureSlider.Locales = model.Locales.ToLocalizedProperty();
+                pictureSlider.Stores = model.SelectedStoreIds != null ? model.SelectedStoreIds.ToList() : new List<string>();
+                await _sliderService.UpdatePictureSlider(pictureSlider);
+                SuccessNotification(_localizationService.GetResource("Plugins.Widgets.Slider.Edited"));
+                return continueEditing ? RedirectToAction("Edit", new { id = pictureSlider.Id }) : RedirectToAction("Configure");
+
+            }
+            //Stores
+            await model.PrepareStoresMappingModel(pictureSlider, true, _storeService);
+            //Categories 
+            await PrepareAllCategoriesModel(model);
+            //Manufacturers
+            await PrepareAllManufacturersModel(model);
+
+            return View("~/Plugins/Widgets.Slider/Views/Edit.cshtml", model);
+        }
+
+        public async Task<IActionResult> Delete(string id)
+        {
+            if (!await _permissionService.Authorize(StandardPermissionProvider.ManagePlugins))
+                return AccessDeniedView();
+
+            var pictureSlider = await _sliderService.GetById(id);
+            if (pictureSlider == null)
+                return Json(new DataSourceResult { Errors = "This pictureSlider not exists" });
+
+            await _sliderService.DeleteSlider(pictureSlider);
+
+            return new NullJsonResult();
+        }
     }
 }

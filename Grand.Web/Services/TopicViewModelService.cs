@@ -8,9 +8,11 @@ using Grand.Services.Seo;
 using Grand.Services.Stores;
 using Grand.Services.Topics;
 using Grand.Web.Infrastructure.Cache;
+using Grand.Web.Interfaces;
 using Grand.Web.Models.Topics;
 using System;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace Grand.Web.Services
 {
@@ -32,13 +34,13 @@ namespace Grand.Web.Services
             IStoreMappingService storeMappingService,
             IAclService aclService)
         {
-            this._topicService = topicService;
-            this._workContext = workContext;
-            this._storeContext = storeContext;
-            this._cacheManager = cacheManager;
-            this._topicTemplateService = topicTemplateService;
-            this._storeMappingService = storeMappingService;
-            this._aclService = aclService;
+            _topicService = topicService;
+            _workContext = workContext;
+            _storeContext = storeContext;
+            _cacheManager = cacheManager;
+            _topicTemplateService = topicTemplateService;
+            _storeMappingService = storeMappingService;
+            _aclService = aclService;
         }
         public virtual TopicModel PrepareTopicModel(Topic topic)
         {
@@ -51,18 +53,19 @@ namespace Grand.Web.Services
                 SystemName = topic.SystemName,
                 IncludeInSitemap = topic.IncludeInSitemap,
                 IsPasswordProtected = topic.IsPasswordProtected,
-                Title = topic.IsPasswordProtected ? "" : topic.GetLocalized(x => x.Title),
-                Body = topic.IsPasswordProtected ? "" : topic.GetLocalized(x => x.Body),
-                MetaKeywords = topic.GetLocalized(x => x.MetaKeywords),
-                MetaDescription = topic.GetLocalized(x => x.MetaDescription),
-                MetaTitle = topic.GetLocalized(x => x.MetaTitle),
-                SeName = topic.GetSeName(),
-                TopicTemplateId = topic.TopicTemplateId
+                Title = topic.IsPasswordProtected ? "" : topic.GetLocalized(x => x.Title, _workContext.WorkingLanguage.Id),
+                Body = topic.IsPasswordProtected ? "" : topic.GetLocalized(x => x.Body, _workContext.WorkingLanguage.Id),
+                MetaKeywords = topic.GetLocalized(x => x.MetaKeywords, _workContext.WorkingLanguage.Id),
+                MetaDescription = topic.GetLocalized(x => x.MetaDescription, _workContext.WorkingLanguage.Id),
+                MetaTitle = topic.GetLocalized(x => x.MetaTitle, _workContext.WorkingLanguage.Id),
+                SeName = topic.GetSeName(_workContext.WorkingLanguage.Id),
+                TopicTemplateId = topic.TopicTemplateId,
+                Published = topic.Published
             };
             return model;
 
         }
-        public virtual TopicModel TopicDetails(string topicId)
+        public virtual async Task<TopicModel> TopicDetails(string topicId)
         {
 
             var cacheKey = string.Format(ModelCacheEventConsumer.TOPIC_MODEL_BY_ID_KEY,
@@ -70,13 +73,13 @@ namespace Grand.Web.Services
                 _workContext.WorkingLanguage.Id,
                 _storeContext.CurrentStore.Id,
                 string.Join(",", _workContext.CurrentCustomer.GetCustomerRoleIds()));
-            var cacheModel = _cacheManager.Get(cacheKey, () =>
+            var cacheModel = await _cacheManager.GetAsync(cacheKey, async () =>
                 {
-                    var topic = _topicService.GetTopicById(topicId);
+                    var topic = await _topicService.GetTopicById(topicId);
                     if (topic == null)
                         return null;
                     //Store mapping
-                    if (!_storeMappingService.Authorize(topic))
+                    if (! _storeMappingService.Authorize(topic))
                         return null;
                     //ACL (access control list)
                     if (!_aclService.Authorize(topic))
@@ -89,7 +92,7 @@ namespace Grand.Web.Services
             return cacheModel;
 
         }
-        public virtual TopicModel TopicDetailsPopup(string systemName)
+        public virtual async Task<TopicModel> TopicDetailsPopup(string systemName)
         {
             var cacheKey = string.Format(ModelCacheEventConsumer.TOPIC_MODEL_BY_SYSTEMNAME_KEY,
                 systemName,
@@ -97,10 +100,10 @@ namespace Grand.Web.Services
                 _storeContext.CurrentStore.Id,
                 string.Join(",", _workContext.CurrentCustomer.GetCustomerRoleIds()));
 
-            var cacheModel = _cacheManager.Get(cacheKey, () =>
+            var cacheModel = await _cacheManager.GetAsync(cacheKey, async () =>
             {
                 //load by store
-                var topic = _topicService.GetTopicBySystemName(systemName, _storeContext.CurrentStore.Id);
+                var topic = await _topicService.GetTopicBySystemName(systemName, _storeContext.CurrentStore.Id);
                 if (topic == null)
                     return null;
                 //ACL (access control list)
@@ -110,17 +113,17 @@ namespace Grand.Web.Services
             });
             return cacheModel;
         }
-        public virtual TopicModel TopicBlock(string systemName)
+        public virtual async Task<TopicModel> TopicBlock(string systemName)
         {
             var cacheKey = string.Format(ModelCacheEventConsumer.TOPIC_MODEL_BY_SYSTEMNAME_KEY,
                 systemName,
                 _workContext.WorkingLanguage.Id, _storeContext.CurrentStore.Id,
                 string.Join(",", _workContext.CurrentCustomer.GetCustomerRoleIds()));
-            var cacheModel = _cacheManager.Get(cacheKey, () =>
+            var cacheModel = await _cacheManager.GetAsync(cacheKey, async () =>
             {
                 //load by store
-                var topic = _topicService.GetTopicBySystemName(systemName, _storeContext.CurrentStore.Id);
-                if (topic == null)
+                var topic = await _topicService.GetTopicBySystemName(systemName, _storeContext.CurrentStore.Id);
+                if (topic == null || !topic.Published)
                     return null;
                 //Store mapping
                 if (!_storeMappingService.Authorize(topic))
@@ -133,14 +136,14 @@ namespace Grand.Web.Services
 
             return cacheModel;
         }
-        public virtual string PrepareTopicTemplateViewPath(string templateId)
+        public virtual async Task<string> PrepareTopicTemplateViewPath(string templateId)
         {
             var templateCacheKey = string.Format(ModelCacheEventConsumer.TOPIC_TEMPLATE_MODEL_KEY, templateId);
-            var templateViewPath = _cacheManager.Get(templateCacheKey, () =>
+            var templateViewPath = await _cacheManager.GetAsync(templateCacheKey, async () =>
             {
-                var template = _topicTemplateService.GetTopicTemplateById(templateId);
+                var template = await _topicTemplateService.GetTopicTemplateById(templateId);
                 if (template == null)
-                    template = _topicTemplateService.GetAllTopicTemplates().FirstOrDefault();
+                    template = (await _topicTemplateService.GetAllTopicTemplates()).FirstOrDefault();
                 if (template == null)
                     throw new Exception("No default template could be loaded");
                 return template.ViewPath;

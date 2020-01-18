@@ -1,32 +1,31 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Grand.Web.Services;
-using System.Linq;
+﻿using Grand.Core;
 using Grand.Core.Domain.Orders;
-using Grand.Core;
-using Grand.Services.Orders;
 using Grand.Framework.Components;
+using Grand.Services.Orders;
+using Grand.Web.Interfaces;
+using Microsoft.AspNetCore.Mvc;
+using System.Threading.Tasks;
 
 namespace Grand.Web.ViewComponents
 {
     public class OrderTotalsViewComponent : BaseViewComponent
     {
         private readonly IShoppingCartViewModelService _shoppingCartViewModelService;
-        private readonly IWorkContext _workContext;
+        private readonly IShoppingCartService _shoppingCartService;
         private readonly IStoreContext _storeContext;
-        public OrderTotalsViewComponent(IShoppingCartViewModelService shoppingCartViewModelService, IWorkContext workContext, IStoreContext storeContext)
+        public OrderTotalsViewComponent(IShoppingCartViewModelService shoppingCartViewModelService, IShoppingCartService shoppingCartService, IStoreContext storeContext)
         {
-            this._shoppingCartViewModelService = shoppingCartViewModelService;
-            this._workContext = workContext;
-            this._storeContext = storeContext;
+            _shoppingCartViewModelService = shoppingCartViewModelService;
+            _shoppingCartService = shoppingCartService;
+            _storeContext = storeContext;
         }
 
-        public IViewComponentResult Invoke(bool isEditable)
+        public async Task<IViewComponentResult> InvokeAsync(bool isEditable)
         {
-            var cart = _workContext.CurrentCustomer.ShoppingCartItems
-                .Where(sci => sci.ShoppingCartType == ShoppingCartType.ShoppingCart || sci.ShoppingCartType == ShoppingCartType.Auctions)
-                .LimitPerStore(_storeContext.CurrentStore.Id)
-                .ToList();
-            var model = _shoppingCartViewModelService.PrepareOrderTotals(cart, isEditable);
+            var cart = _shoppingCartService.GetShoppingCart(_storeContext.CurrentStore.Id, ShoppingCartType.ShoppingCart, ShoppingCartType.Auctions);
+
+            var model = await _shoppingCartViewModelService.PrepareOrderTotals(cart, isEditable);
+
             return View(model);
         }
     }

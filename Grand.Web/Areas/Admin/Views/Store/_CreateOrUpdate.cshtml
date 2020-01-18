@@ -19,7 +19,8 @@
         }
     }
 </script>
-@(Html.LocalizedEditor<StoreModel, StoreLocalizedModel>("store-localized",
+<vc:admin-widget widget-zone="store_details_top" additional-data="Model" />
+@(await Html.LocalizedEditor<StoreModel, StoreLocalizedModel>("store-localized",
     @<div class="form-horizontal">
          <div class="form-body">
              <div class="form-group">
@@ -57,9 +58,9 @@
         <div class="form-group">
             <admin-label asp-for="SslEnabled" />
             <div class="col-md-9 col-sm-9">
-                <label class="mt-checkbox mt-checkbox-outline">
+                <label class="mt-checkbox mt-checkbox-outline control control-checkbox">
                     <admin-input asp-for="SslEnabled" />
-                    <span></span>
+                    <div class="control__indicator"></div>
                 </label>
                 <span asp-validation-for="SslEnabled"></span>
             </div>
@@ -69,7 +70,7 @@
                 <em>@T("Admin.Configuration.Stores.Fields.SslEnabled.Hint2")</em>
             </div>
         </div>
-        <div class="form-group" id="pnlSecureUrl">            
+        <div class="form-group" id="pnlSecureUrl">
             <admin-label asp-for="SecureUrl" />
             <div class="col-md-9 col-sm-9">
                 <admin-input asp-for="SecureUrl" />
@@ -126,11 +127,33 @@
             </div>
         </div>
         <div class="form-group">
+            <admin-label asp-for="CompanyEmail" />
+            <div class="col-md-9 col-sm-9">
+                <admin-input asp-for="CompanyEmail" />
+                <span asp-validation-for="CompanyEmail"></span>
+            </div>
+        </div>
+        <div class="form-group">
+            <admin-label asp-for="CompanyHours" />
+            <div class="col-md-9 col-sm-9">
+                <admin-input asp-for="CompanyHours" />
+                <span asp-validation-for="CompanyHours"></span>
+            </div>
+        </div>
+        <div class="form-group">
             <admin-label asp-for="DefaultWarehouseId" />
             <div class="col-md-9 col-sm-9">
                 <admin-select asp-for="DefaultWarehouseId" asp-items="Model.AvailableWarehouses" />
                 <span asp-validation-for="DefaultWarehouseId"></span>
             </div>
         </div>
+        <div class="form-group">
+            <admin-label asp-for="DefaultCountryId" />
+            <div class="col-md-9 col-sm-9">
+                <admin-select asp-for="DefaultCountryId" asp-items="Model.AvailableCountries" />
+                <span asp-validation-for="DefaultCountryId"></span>
+            </div>
+        </div>
     </div>
 </div>
+<vc:admin-widget widget-zone="store_details_bottom" additional-data="Model" />

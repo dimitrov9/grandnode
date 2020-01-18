@@ -1,6 +1,7 @@
 ﻿@model PrivateMessageListModel
+@inject Grand.Services.Localization.ILocalizationService localizationService
 <div class="private-messages-box">
-    <script>
+    <script asp-location="Footer">
         $(document).ready(function () {
 
             $('#selectall-sent').click(function () {
@@ -88,7 +89,7 @@
                     </tbody>
                 </table>
             </div>
-            @{ var pager = Html.Pager(Model.PagerModel);}
+            @{ var pager = Html.Pager(localizationService, Model.PagerModel);}
             @if (pager!=null)
             {
                 <div class="pager">

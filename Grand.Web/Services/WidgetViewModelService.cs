@@ -1,11 +1,14 @@
 ﻿using Grand.Core;
 using Grand.Core.Caching;
-using Grand.Services.Cms;
 using Grand.Framework.Themes;
+using Grand.Services.Cms;
 using Grand.Web.Infrastructure.Cache;
+using Grand.Web.Interfaces;
 using Grand.Web.Models.Cms;
-using System.Collections.Generic;
 using Microsoft.AspNetCore.Routing;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Grand.Web.Services
 {
@@ -15,16 +18,16 @@ namespace Grand.Web.Services
         private readonly ICacheManager _cacheManager;
         private readonly IWidgetService _widgetService;
         private readonly IThemeContext _themeContext;
-        public WidgetViewModelService(IStoreContext storeContext, ICacheManager cacheManager,
+        public WidgetViewModelService(IStoreContext storeContext, IEnumerable<ICacheManager> cacheManager,
             IWidgetService widgetService, IThemeContext themeContext)
         {
-            this._storeContext = storeContext;
-            this._cacheManager = cacheManager;
-            this._widgetService = widgetService;
-            this._themeContext = themeContext;
+            _storeContext = storeContext;
+            _cacheManager = cacheManager.First(o => o.GetType() == typeof(MemoryCacheManager));
+            _widgetService = widgetService;
+            _themeContext = themeContext;
         }
 
-        public virtual List<RenderWidgetModel> PrepareRenderWidget(string widgetZone, object additionalData = null)
+        public virtual async Task<List<RenderWidgetModel>> PrepareRenderWidget(string widgetZone, object additionalData = null)
         {
             var cacheKey = string.Format(ModelCacheEventConsumer.WIDGET_MODEL_KEY,
                 _storeContext.CurrentStore.Id, widgetZone, _themeContext.WorkingThemeName);
@@ -36,7 +39,7 @@ namespace Grand.Web.Services
                 { "additionalData", additionalData}
             };
 
-            var cachedModel = _cacheManager.Get(cacheKey, () =>
+            var cachedModel = await _cacheManager.GetAsync(cacheKey, async () =>
             {
                 //model
                 var model = new List<RenderWidgetModel>();
@@ -54,7 +57,7 @@ namespace Grand.Web.Services
 
                     model.Add(widgetModel);
                 }
-                return model;
+                return await Task.FromResult(model);
             });
 
             //"WidgetViewComponentArguments" property of widget models depends on "additionalData".

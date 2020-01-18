@@ -1,16 +1,17 @@
-﻿using System;
+﻿using Grand.Core;
+using Grand.Core.Caching;
+using Grand.Core.Domain.Catalog;
+using Grand.Framework.Mvc.Models;
+using Grand.Framework.UI.Paging;
+using Grand.Services.Catalog;
+using Grand.Services.Localization;
+using Grand.Web.Infrastructure.Cache;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using Grand.Core;
-using Grand.Core.Caching;
-using Grand.Core.Domain.Catalog;
-using Grand.Services.Catalog;
-using Grand.Services.Localization;
-using Grand.Framework.Mvc.Models;
-using Grand.Framework.UI.Paging;
-using Grand.Web.Infrastructure.Cache;
-using Microsoft.AspNetCore.Mvc.Rendering;
+using System.Threading.Tasks;
 
 namespace Grand.Web.Models.Catalog
 {
@@ -20,12 +21,12 @@ namespace Grand.Web.Models.Catalog
 
         public CatalogPagingFilteringModel()
         {
-            this.AvailableSortOptions = new List<SelectListItem>();
-            this.AvailableViewModes = new List<SelectListItem>();
-            this.PageSizeOptions = new List<SelectListItem>();
+            AvailableSortOptions = new List<SelectListItem>();
+            AvailableViewModes = new List<SelectListItem>();
+            PageSizeOptions = new List<SelectListItem>();
 
-            this.PriceRangeFilter = new PriceRangeFilterModel();
-            this.SpecificationFilter = new SpecificationFilterModel();
+            PriceRangeFilter = new PriceRangeFilterModel();
+            SpecificationFilter = new SpecificationFilterModel();
         }
 
         #endregion
@@ -60,7 +61,7 @@ namespace Grand.Web.Models.Catalog
         /// Product sorting
         /// </summary>
         public string ViewMode { get; set; }
-        
+
 
         #endregion
 
@@ -78,7 +79,7 @@ namespace Grand.Web.Models.Catalog
 
             public PriceRangeFilterModel()
             {
-                this.Items = new List<PriceRangeFilterItem>();
+                Items = new List<PriceRangeFilterItem>();
             }
 
             #endregion
@@ -123,7 +124,7 @@ namespace Grand.Web.Models.Catalog
                 const string excludedQueryStringParams = "pagenumber";
                 var excludedQueryStringParamsSplitted = excludedQueryStringParams.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
                 foreach (string exclude in excludedQueryStringParamsSplitted)
-                    url = webHelper.RemoveQueryString(url, exclude);
+                    url = webHelper.ModifyQueryString(url, exclude, null);
                 return url;
             }
 
@@ -136,7 +137,7 @@ namespace Grand.Web.Models.Catalog
                 var range = webHelper.QueryString<string>(QUERYSTRINGPARAM);
                 if (String.IsNullOrEmpty(range))
                     return null;
-                string[] fromTo = range.Trim().Split(new [] { '-' });
+                string[] fromTo = range.Trim().Split(new[] { '-' });
                 if (fromTo.Length == 2)
                 {
                     decimal? from = null;
@@ -187,7 +188,7 @@ namespace Grand.Web.Models.Catalog
                             item.Selected = true;
 
                         //filter URL
-                        string url = webHelper.ModifyQueryString(webHelper.GetThisPageUrl(true), QUERYSTRINGPARAM + "=" + fromQuery + "-" + toQuery, null);
+                        string url = webHelper.ModifyQueryString(webHelper.GetThisPageUrl(true), QUERYSTRINGPARAM, $"{fromQuery}-{toQuery}");
                         url = ExcludeQueryStringParams(url, webHelper);
                         item.FilterUrl = url;
 
@@ -198,7 +199,7 @@ namespace Grand.Web.Models.Catalog
                     if (selectedPriceRange != null)
                     {
                         //remove filter URL
-                        string url = webHelper.RemoveQueryString(webHelper.GetThisPageUrl(true), QUERYSTRINGPARAM);
+                        string url = webHelper.ModifyQueryString(webHelper.GetThisPageUrl(true), QUERYSTRINGPARAM, null);
                         url = ExcludeQueryStringParams(url, webHelper);
                         this.RemoveFilterUrl = url;
                     }
@@ -208,7 +209,7 @@ namespace Grand.Web.Models.Catalog
                     this.Enabled = false;
                 }
             }
-            
+
             #endregion
 
             #region Properties
@@ -239,8 +240,8 @@ namespace Grand.Web.Models.Catalog
 
             public SpecificationFilterModel()
             {
-                this.AlreadyFilteredItems = new List<SpecificationFilterItem>();
-                this.NotFilteredItems = new List<SpecificationFilterItem>();
+                AlreadyFilteredItems = new List<SpecificationFilterItem>();
+                NotFilteredItems = new List<SpecificationFilterItem>();
             }
 
             #endregion
@@ -253,7 +254,7 @@ namespace Grand.Web.Models.Catalog
                 const string excludedQueryStringParams = "pagenumber";
                 var excludedQueryStringParamsSplitted = excludedQueryStringParams.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
                 foreach (string exclude in excludedQueryStringParamsSplitted)
-                    url = webHelper.RemoveQueryString(url, exclude);
+                    url = webHelper.ModifyQueryString(url, exclude, null);
                 return url;
             }
 
@@ -278,7 +279,7 @@ namespace Grand.Web.Models.Catalog
                 if (String.IsNullOrWhiteSpace(alreadyFilteredSpecsStr))
                     return result;
 
-                foreach (var spec in alreadyFilteredSpecsStr.Split(new [] { ',' }, StringSplitOptions.RemoveEmptyEntries))
+                foreach (var spec in alreadyFilteredSpecsStr.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries))
                 {
                     if (!result.Contains(spec))
                         result.Add(spec);
@@ -286,7 +287,7 @@ namespace Grand.Web.Models.Catalog
                 return result;
             }
 
-            public virtual void PrepareSpecsFilters(IList<string> alreadyFilteredSpecOptionIds,
+            public virtual async Task PrepareSpecsFilters(IList<string> alreadyFilteredSpecOptionIds,
                 IList<string> filterableSpecificationAttributeOptionIds,
                 ISpecificationAttributeService specificationAttributeService,
                 IWebHelper webHelper, IWorkContext workContext, ICacheManager cacheManager)
@@ -296,12 +297,12 @@ namespace Grand.Web.Models.Catalog
                     ? string.Join(",", filterableSpecificationAttributeOptionIds.Union(alreadyFilteredSpecOptionIds)) : string.Empty;
                 var cacheKey = string.Format(ModelCacheEventConsumer.SPECS_FILTER_MODEL_KEY, optionIds, workContext.WorkingLanguage.Id);
 
-                var allFilters = cacheManager.Get(cacheKey, () =>
+                var allFilters = await cacheManager.GetAsync(cacheKey, async () =>
                 {
                     var _allFilters = new List<SpecificationAttributeOptionFilter>();
                     foreach (var sao in filterableSpecificationAttributeOptionIds.Union(alreadyFilteredSpecOptionIds))
                     {
-                        var sa = specificationAttributeService.GetSpecificationAttributeByOptionId(sao);
+                        var sa = await specificationAttributeService.GetSpecificationAttributeByOptionId(sao);
                         if (sa != null)
                         {
                             _allFilters.Add(new SpecificationAttributeOptionFilter
@@ -329,27 +330,29 @@ namespace Grand.Web.Models.Catalog
 
                 //prepare the model properties
                 Enabled = true;
-                var removeFilterUrl = webHelper.RemoveQueryString(webHelper.GetThisPageUrl(true), QUERYSTRINGPARAM);
+                var removeFilterUrl = webHelper.ModifyQueryString(webHelper.GetThisPageUrl(true), QUERYSTRINGPARAM, null);
                 RemoveFilterUrl = ExcludeQueryStringParams(removeFilterUrl, webHelper);
 
                 //get already filtered specification options
                 var alreadyFilteredOptions = allFilters.Where(x => alreadyFilteredSpecOptionIds.Contains(x.SpecificationAttributeOptionId));
                 AlreadyFilteredItems = alreadyFilteredOptions.Select(x =>
-                    new SpecificationFilterItem
+                {
+                    var filterUrl = webHelper.ModifyQueryString(webHelper.GetThisPageUrl(true), QUERYSTRINGPARAM, GenerateFilteredSpecQueryParam(alreadyFilteredOptions.Where(y => y.SpecificationAttributeOptionId != x.SpecificationAttributeOptionId).Select(z => z.SpecificationAttributeOptionId).ToList()));
+                    return new SpecificationFilterItem
                     {
                         SpecificationAttributeName = x.SpecificationAttributeName,
                         SpecificationAttributeOptionName = x.SpecificationAttributeOptionName,
-                        SpecificationAttributeOptionColorRgb = x.SpecificationAttributeOptionColorRgb
-                    }).ToList();
+                        SpecificationAttributeOptionColorRgb = x.SpecificationAttributeOptionColorRgb,
+                        FilterUrl = ExcludeQueryStringParams(filterUrl, webHelper)
+                    };
+                }).ToList();
 
                 //get not filtered specification options
                 NotFilteredItems = allFilters.Except(alreadyFilteredOptions).Select(x =>
                 {
                     //filter URL
                     var alreadyFiltered = alreadyFilteredSpecOptionIds.Concat(new List<string> { x.SpecificationAttributeOptionId });
-                    var queryString = string.Format("{0}={1}", QUERYSTRINGPARAM, GenerateFilteredSpecQueryParam(alreadyFiltered.ToList()));
-                    var filterUrl = webHelper.ModifyQueryString(webHelper.GetThisPageUrl(true), queryString, null);
-
+                    var filterUrl = webHelper.ModifyQueryString(webHelper.GetThisPageUrl(true), QUERYSTRINGPARAM, GenerateFilteredSpecQueryParam(alreadyFiltered.ToList()));
                     return new SpecificationFilterItem()
                     {
                         SpecificationAttributeName = x.SpecificationAttributeName,

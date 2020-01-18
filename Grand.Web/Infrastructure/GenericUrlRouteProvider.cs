@@ -1,8 +1,8 @@
-﻿using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Routing;
-using Grand.Framework.Localization;
+﻿using Grand.Framework.Localization;
 using Grand.Framework.Mvc.Routing;
 using Grand.Framework.Seo;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Routing;
 
 namespace Grand.Web.Infrastructure
 {
@@ -34,6 +34,9 @@ namespace Grand.Web.Infrastructure
             routeBuilder.MapLocalizedRoute("KnowledgebaseArticle", "{SeName}", new { controller = "Knowledgebase", action = "KnowledgebaseArticle" });
 
             routeBuilder.MapLocalizedRoute("KnowledgebaseCategory", "{SeName}", new { controller = "Knowledgebase", action = "ArticlesByCategory" });
+
+            routeBuilder.MapLocalizedRoute("Course", "{SeName}", new { controller = "Course", action = "Details" });
+
         }
 
         public int Priority

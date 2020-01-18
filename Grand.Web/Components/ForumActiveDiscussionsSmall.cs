@@ -1,6 +1,7 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Grand.Web.Services;
-using Grand.Framework.Components;
+﻿using Grand.Framework.Components;
+using Grand.Web.Interfaces;
+using Microsoft.AspNetCore.Mvc;
+using System.Threading.Tasks;
 
 namespace Grand.Web.ViewComponents
 {
@@ -10,12 +11,12 @@ namespace Grand.Web.ViewComponents
 
         public ForumActiveDiscussionsSmallViewComponent(IBoardsViewModelService boardsViewModelService)
         {
-            this._boardsViewModelService = boardsViewModelService;
+            _boardsViewModelService = boardsViewModelService;
         }
 
-        public IViewComponentResult Invoke()
+        public async Task<IViewComponentResult> InvokeAsync()
         {
-            var model = _boardsViewModelService.PrepareActiveDiscussions();
+            var model = await _boardsViewModelService.PrepareActiveDiscussions();
             if (model == null)
                 return Content("");
 

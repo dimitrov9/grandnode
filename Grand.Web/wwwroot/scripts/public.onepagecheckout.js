@@ -143,6 +143,11 @@ var Billing = {
             data: $(this.form).serialize(),
             type: 'post',
             success: this.nextStep,
+            beforeSend: function () {
+                $('html, body').animate({
+                    scrollTop: 0
+                }, 800)
+            },
             complete: this.resetLoadWaiting,
             error: Checkout.ajaxFailure
         });
@@ -229,6 +234,11 @@ var Shipping = {
             data: $(this.form).serialize(),
             type: 'post',
             success: this.nextStep,
+            beforeSend: function () {
+                $('html, body').animate({
+                    scrollTop: 0
+                }, 800)
+            },
             complete: this.resetLoadWaiting,
             error: Checkout.ajaxFailure
         });
@@ -502,7 +512,4 @@ var ConfirmOrder = {
 
         Checkout.setStepResponse(response);
     }
-};
-
-  $(".opc li.active").prev("li").removeClass("dontGo");
-  $(".opc li.active").nextAll("li").addClass("dontGo");
+};  

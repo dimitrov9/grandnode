@@ -1,10 +1,7 @@
-﻿using Grand.Framework.Mvc.Models;
-using Microsoft.AspNetCore.Mvc.Rendering;
-using Grand.Framework.Mvc.ModelBinding;
+﻿using Grand.Framework.Mvc.ModelBinding;
+using Grand.Framework.Mvc.Models;
 using System;
 using System.Collections.Generic;
-using Grand.Framework;
-using Grand.Framework.Mvc;
 
 namespace Grand.Web.Areas.Admin.Models.Common
 {
@@ -32,11 +29,20 @@ namespace Grand.Web.Areas.Admin.Models.Common
         [GrandResourceDisplayName("Admin.System.SystemInfo.ServerLocalTime")]
         public DateTime ServerLocalTime { get; set; }
 
+        [GrandResourceDisplayName("Admin.System.SystemInfo.ApplicationTime")]
+        public DateTime ApplicationTime { get; set; }
+
         [GrandResourceDisplayName("Admin.System.SystemInfo.ServerTimeZone")]
         public string ServerTimeZone { get; set; }
 
         [GrandResourceDisplayName("Admin.System.SystemInfo.UTCTime")]
         public DateTime UtcTime { get; set; }
+
+        [GrandResourceDisplayName("Admin.System.SystemInfo.Scheme")]
+        public string RequestScheme { get; set; }
+
+        [GrandResourceDisplayName("Admin.System.SystemInfo.IsHttps")]
+        public bool IsHttps { get; set; }
 
         [GrandResourceDisplayName("Admin.System.SystemInfo.ServerVariables")]
         public IList<ServerVariableModel> ServerVariables { get; set; }

@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
-using System.Text.RegularExpressions;
 using System.Runtime.Loader;
+using System.Text.RegularExpressions;
 
 namespace Grand.Core.Infrastructure
 {
@@ -19,7 +19,7 @@ namespace Grand.Core.Infrastructure
         #region Fields
 
         private bool loadAppDomainAssemblies = true;
-        private string assemblySkipLoadingPattern = "^System|^mscorlib|^Microsoft|^AjaxControlToolkit|^Antlr3|^Autofac|^AutoMapper|^Castle|^ComponentArt|^CppCodeProvider|^DotNetOpenAuth|^EPPlus|^FluentValidation|^ImageProcessor|^itextsharp|^log4net|^MaxMind|^MbUnit|^MiniProfiler|^Mono.Math|^MongoDB|^MvcContrib|^Newtonsoft|^NHibernate|^nunit|^Org.Mentalis|^PerlRegex|^QuickGraph|^Recaptcha|^Remotion|^RestSharp|^Rhino|^Telerik|^Iesi|^TestDriven|^TestFu|^UserAgentStringLibrary|^VJSharpCodeProvider|^WebActivator|^WebDev|^WebGrease";
+        private string assemblySkipLoadingPattern = "^System|^mscorlib|^Microsoft|^Autofac|^AutoMapper|^Castle|^ComponentArt|^CppCodeProvider|^DotNetOpenAuth|^EPPlus|^FluentValidation|^ImageProcessor|^itextsharp|^log4net|^MaxMind|^MbUnit|^MiniProfiler|^Mono.Math|^MongoDB|^MvcContrib|^Newtonsoft|^NHibernate|^nunit|^Org.Mentalis|^PerlRegex|^QuickGraph|^Recaptcha|^Remotion|^RestSharp|^Iesi|^TestDriven|^TestFu|^UserAgentStringLibrary|^VJSharpCodeProvider|^WebDev|^WebGrease|^dotliquid|^fluentscheduler|^netstandard|^Google.Apis|^AWSSDK|^Braintree|^MediatR|^WebMarkupMin|^HealthChecks|^WebEssentials|^NWebsec|^NetEscapades|^Wangkanai|^dotnet-bundle|^MailKit|^MimeKit|^NUglify|^Pipelines.Sockets.Unofficial|^SharpCompress|^SkiaSharp|^StackExchange.Redis|^DnsClient|^BouncyCastle.Crypto|^AdvancedStringBuilder";
         private string assemblyRestrictToLoadingPattern = ".*";
         private IList<string> assemblyNames = new List<string>();
 
@@ -156,7 +156,7 @@ namespace Grand.Core.Infrastructure
         public virtual IList<Assembly> GetAssemblies()
         {
             var addedAssemblyNames = new List<string>();
-            var assemblies = new List<Assembly>() { Assembly.GetExecutingAssembly() };
+            var assemblies = new List<Assembly>();
 
             if (LoadAppDomainAssemblies)
                 AddAssembliesInAppDomain(addedAssemblyNames, assemblies);

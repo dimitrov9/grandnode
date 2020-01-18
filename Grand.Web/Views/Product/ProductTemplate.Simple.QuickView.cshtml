@@ -5,22 +5,28 @@
     <script src="~/scripts/public.reservation.js"></script>
     <link href="~/content/jquery-ui-themes/smoothness/jquery-ui.calendar.min.css" rel="stylesheet" type="text/css" />
 }
-@await Component.InvokeAsync("Widget", new { widgetZone = "productdetails_after_breadcrumb", additionalData = Model.Id })
-<div class="product-quickview">
-    <div class="modal-dialog container" role="document">
+@await Component.InvokeAsync("Widget", new { widgetZone = "productdetails_quickview_after_breadcrumb", additionalData = Model.Id })
+<resources asp-type="ScriptHeader" />
+    <div class="modal-dialog product-quickview" role="document">
         <div class="modal-content rounded-0">
             <button type="button" class="close text-dark" data-dismiss="modal" aria-label="Close">
                 <span class="quick-close"></span>
             </button>
-            <div class="page product-details-page">
-                @await Component.InvokeAsync("Widget", new { widgetZone = "productdetails_top", additionalData = Model.Id })
+            <div class="product-details-page">
+                @await Component.InvokeAsync("Widget", new { widgetZone = "productdetails_quickview_top", additionalData = Model.Id })
                 <form asp-route="Product" asp-route-sename="@Model.SeName" method="post" id="product-details-form">
                     <div itemscope itemtype="http://schema.org/Product" data-productid="@Model.Id">
                         <div class="item-container col d-md-inline-flex d-md-flex px-0">
-                            @await Component.InvokeAsync("Widget", new { widgetZone = "productdetails_before_pictures", additionalData = Model.Id })
+                            @if (!string.IsNullOrEmpty(Model.Flag))
+                            {
+                                <div class="product-labels">
+                                    <span class="product-label badge bg-info text-white">@Model.Flag</span>
+                                </div>
+                            }
+                            @await Component.InvokeAsync("Widget", new { widgetZone = "productdetails_quickview_before_pictures", additionalData = Model.Id })
                             <!--product pictures-->
                             <partial name="_ProductDetailsPictures" model="Model" />
-                            @await Component.InvokeAsync("Widget", new { widgetZone = "productdetails_after_pictures", additionalData = Model.Id })
+                            @await Component.InvokeAsync("Widget", new { widgetZone = "productdetails_quickview_after_pictures", additionalData = Model.Id })
                             <div class="overview col-12 col-md-6">
                                 <partial name="_Discontinued" model="Model" />
                                 <h2 class="generalTitle" itemprop="name">
@@ -32,9 +38,11 @@
                                         @Html.Raw(Model.ShortDescription)
                                     </div>
                                 }
-                                @await Component.InvokeAsync("Widget", new { widgetZone = "productdetails_overview_top", additionalData = Model.Id })
+                                @await Component.InvokeAsync("Widget", new { widgetZone = "productdetails_quickview_overview_top", additionalData = Model.Id })
                                 <!--product reviews-->
-                                <partial name="_ProductReviewOverview" model="Model.ProductReviewOverview" />
+                                <div class="quickview-reviews">
+                                    <partial name="_ProductReviewOverview" model="Model.ProductReviewOverview" />
+                                </div>
                                 <!--manufacturers-->
                                 <partial name="_ProductManufacturers" model="Model.ProductManufacturers" />
                                 <!--availability-->
@@ -52,6 +60,11 @@
                                     var dataDictAttributes = new ViewDataDictionary(ViewData);
                                     dataDictAttributes.TemplateInfo.HtmlFieldPrefix = string.Format("attributes_{0}", Model.Id);
                                     <partial name="_ProductAttributes" model="Model.ProductAttributes" view-data="dataDictAttributes" />
+                                }
+                                <!--warehouses-->
+                                @if (Model.AllowToSelectWarehouse)
+                                {
+                                    <partial name="_ProductWarehouses" model="Model" />
                                 }
                                 <!--gift card-->
                                 @{
@@ -90,7 +103,6 @@
                                                 <partial name="_AuctionInfo" model="Model" view-data="dataDictAuction" />
                                             }
 
-                                            @await Component.InvokeAsync("Widget", new { widgetZone = "productdetails_inside_overview_buttons_before", additionalData = Model.Id })
                                             @{
                                                 var dataDictAddToWishlist = new ViewDataDictionary(ViewData);
                                                 dataDictAddToWishlist.TemplateInfo.HtmlFieldPrefix = string.Format("addtocart_{0}", Model.Id);
@@ -108,31 +120,36 @@
                                         </div>
                                     </div>
                                 </div>
-                                @await Component.InvokeAsync("Widget", new { widgetZone = "productdetails_inside_overview_buttons_after", additionalData = Model.Id })
-                                @await Component.InvokeAsync("Widget", new { widgetZone = "productdetails_overview_bottom", additionalData = Model.Id })
+                                @await Component.InvokeAsync("Widget", new { widgetZone = "productdetails_quickview_overview_bottom", additionalData = Model.Id })
                             </div>
                         </div>
                         <div class="col-12 mt-2 mb-2 px-0">
                             <ul class="nav nav-tabs product-tabs" id="myTab" role="tablist">
                                 <li class="nav-item">
-                                    <a class="nav-link active" id="desc-tab" data-toggle="tab" href="#desc" role="tab" aria-controls="desc" aria-selected="true"><span class="d-none d-md-block">@T("Products.Description")</span><i class="fa fa-sticky-note d-md-none"></i></a>
+                                    <a class="nav-link active" id="desc-tab" data-toggle="tab" href="#desc" role="tab" aria-controls="desc" aria-selected="true"><span class="d-none d-md-block">@T("Products.Description")</span><span class="mdi mdi-clipboard-text-outline d-md-none"></span></a>
                                 </li>
                                 @if (Model.ProductTags.Any())
                                 {
                                     <li class="nav-item">
-                                        <a class="nav-link" id="tags-tab" data-toggle="tab" href="#tags" role="tab" aria-controls="tags" aria-selected="false"><span class="d-none d-md-block">@T("Products.Tags")</span><i class="fa fa-tags d-md-none"></i></a>
+                                        <a class="nav-link" id="tags-tab" data-toggle="tab" href="#tags" role="tab" aria-controls="tags" aria-selected="false"><span class="d-none d-md-block">@T("Products.Tags")</span><span class="mdi mdi-tag-multiple d-md-none"></span></a>
                                     </li>
                                 }
                                 @if (Model.ProductSpecifications.Any())
                                 {
                                     <li class="nav-item">
-                                        <a class="nav-link" id="spec-tab" data-toggle="tab" href="#spec" role="tab" aria-controls="spec" aria-selected="false"><span class="d-none d-md-block">@T("Products.Specs")</span><i class="fa fa-puzzle-piece d-md-none"></i></a>
+                                        <a class="nav-link" id="spec-tab" data-toggle="tab" href="#spec" role="tab" aria-controls="spec" aria-selected="false"><span class="d-none d-md-block">@T("Products.Specs")</span><span class="mdi mdi-file-document-edit-outline d-md-none"></span></a>
+                                    </li>
+                                }
+                                @if (Model.ProductReviewOverview.AllowCustomerReviews)
+                                {
+                                    <li class="nav-item">
+                                        <a class="nav-link" id="review-tab" data-toggle="tab" href="#review" role="tab" aria-controls="review" aria-selected="false"><span class="d-none d-md-block">@T("Products.Reviews") (@Model.ProductReviewOverview.TotalReviews)</span><span class="mdi mdi-account-star d-md-none"></span></a>
                                     </li>
                                 }
                                 @if (Model.AskQuestionOnProduct)
                                 {
                                     <li class="nav-item">
-                                        <a class="nav-link" id="contact-tab" data-toggle="tab" href="#contact" role="tab" aria-controls="contact" aria-selected="false"><span class="d-none d-md-block">@T("Products.ContactUs")</span><i class="fa fa-puzzle-piece d-md-none"></i></a>
+                                        <a class="nav-link" id="contact-tab" data-toggle="tab" href="#contact" role="tab" aria-controls="contact" aria-selected="false"><span class="d-none d-md-block">@T("Products.ContactUs")</span><span class="mdi mdi-message-draw d-md-none"></span></a>
                                     </li>
                                 }
                             </ul>
@@ -146,6 +163,12 @@
                                 {
                                     <div class="tab-pane fade" id="spec" role="tabpanel" aria-labelledby="spec-tab"><partial name="_ProductSpecifications" model="Model.ProductSpecifications" /></div>
                                 }
+                                @if (Model.ProductReviewOverview.AllowCustomerReviews)
+                                {
+                                    <div class="tab-pane fade" id="review" role="tabpanel" aria-labelledby="review-tab">
+                                        @await Component.InvokeAsync("ProductReviews", new { productId = Model.Id })
+                                    </div>
+                                }
                                 @if (Model.AskQuestionOnProduct)
                                 {
                                     <div class="tab-pane fade" id="contact" role="tabpanel" aria-labelledby="contact-tab"><partial name="_AskQuestionOnProduct" model="Model.ProductAskQuestion" /></div>
@@ -153,18 +176,41 @@
                             </div>
                         </div>
                         <!--wishlist, compare, email a friend-->
-                        @await Component.InvokeAsync("Widget", new { widgetZone = "productdetails_before_collateral", additionalData = Model.Id })
                         @await Component.InvokeAsync("ProductsAlsoPurchased", new { productId = Model.Id })
                         @await Component.InvokeAsync("RelatedProducts", new { productId = Model.Id })
                     </div>
                 </form>
-                @await Component.InvokeAsync("Widget", new { widgetZone = "productdetails_bottom", additionalData = Model.Id })
+                @await Component.InvokeAsync("Widget", new { widgetZone = "productdetails_quickview_bottom", additionalData = Model.Id })
             </div>
         </div>
     </div>
-</div>
 <script>
-    $(".sp-large a").click(function () {
-        $(".sp-lightbox:not(:first)").remove();
+    $(document).ready(function () {
+
+        $('#ModalQuickView').animate({
+            scrollTop: 0
+        }, 300, 'linear');
+
+        if ($(window).width() > 767) {
+            $('.product-quickview .review-scroll-button').on('click', function (e) {
+                e.preventDefault();
+                $("#review-tab").click();
+                var vcenter = $('.product-quickview .overview').height() + 30;
+                $('#ModalQuickView').animate({
+                    scrollTop: vcenter
+                }, 300, 'linear');
+            });
+        }
+        else {
+            $('.product-quickview .review-scroll-button').on('click', function (e) {
+                e.preventDefault();
+                $("#review-tab").click();
+                var vcenter = $('.product-quickview .overview').height() + $('.product-quickview .gallery').height() + 30;
+                $('#ModalQuickView').animate({
+                    scrollTop: vcenter
+                }, 300, 'linear');
+            });
+        }
     });
 </script>
+<resources asp-type="ScriptFooter" />

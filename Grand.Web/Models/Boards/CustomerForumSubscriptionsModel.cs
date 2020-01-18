@@ -1,6 +1,6 @@
-﻿using System.Collections.Generic;
-using Grand.Framework.Mvc.Models;
+﻿using Grand.Framework.Mvc.Models;
 using Grand.Web.Models.Common;
+using System.Collections.Generic;
 
 namespace Grand.Web.Models.Boards
 {
@@ -8,7 +8,7 @@ namespace Grand.Web.Models.Boards
     {
         public CustomerForumSubscriptionsModel()
         {
-            this.ForumSubscriptions = new List<ForumSubscriptionModel>();
+            ForumSubscriptions = new List<ForumSubscriptionModel>();
         }
 
         public IList<ForumSubscriptionModel> ForumSubscriptions { get; set; }

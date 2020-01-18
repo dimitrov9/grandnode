@@ -1,5 +1,5 @@
-using System.Collections.Generic;
 using Grand.Core.Domain.Localization;
+using System.Collections.Generic;
 
 namespace Grand.Core.Domain.Catalog
 {
@@ -17,6 +17,11 @@ namespace Grand.Core.Domain.Catalog
         /// Gets or sets the name
         /// </summary>
         public string Name { get; set; }
+
+        /// <summary>
+        /// Gets or sets the sename
+        /// </summary>
+        public string SeName { get; set; }
 
         /// <summary>
         /// Gets or sets the count

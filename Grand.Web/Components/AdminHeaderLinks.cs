@@ -1,7 +1,8 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Grand.Web.Services;
-using Grand.Core;
+﻿using Grand.Core;
 using Grand.Framework.Components;
+using Grand.Web.Interfaces;
+using Microsoft.AspNetCore.Mvc;
+using System.Threading.Tasks;
 
 namespace Grand.Web.ViewComponents
 {
@@ -12,14 +13,14 @@ namespace Grand.Web.ViewComponents
         public AdminHeaderLinksViewComponent(ICommonViewModelService commonViewModelService,
             IWorkContext workContext)
         {
-            this._commonViewModelService = commonViewModelService;
-            this._workContext = workContext;
+            _commonViewModelService = commonViewModelService;
+            _workContext = workContext;
         }
 
-        public IViewComponentResult Invoke()
+        public async Task<IViewComponentResult> InvokeAsync()
         {
-            var model = _commonViewModelService.PrepareAdminHeaderLinks(_workContext.CurrentCustomer);
-            if (!model.DisplayAdminLink)
+            var model = await _commonViewModelService.PrepareAdminHeaderLinks(_workContext.CurrentCustomer);
+            if (!model.DisplayAdminLink && !model.IsCustomerImpersonated)
                 return Content("");
             return View(model);
         }

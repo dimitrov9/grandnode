@@ -1,7 +1,8 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Grand.Framework.Components;
+using Grand.Web.Interfaces;
+using Microsoft.AspNetCore.Mvc;
 using System;
-using Grand.Web.Services;
-using Grand.Framework.Components;
+using System.Threading.Tasks;
 
 namespace Grand.Web.ViewComponents
 {
@@ -11,14 +12,14 @@ namespace Grand.Web.ViewComponents
 
         public PollBlockViewComponent(IPollViewModelService pollViewModelService)
         {
-            this._pollViewModelService = pollViewModelService;
+            _pollViewModelService = pollViewModelService;
         }
 
-        public IViewComponentResult Invoke(string systemKeyword)
+        public async Task<IViewComponentResult> InvokeAsync(string systemKeyword)
         {
-            if (String.IsNullOrWhiteSpace(systemKeyword))
+            if (string.IsNullOrWhiteSpace(systemKeyword))
                 return Content("");
-            var model = _pollViewModelService.PreparePollBySystemName(systemKeyword);
+            var model = await _pollViewModelService.PreparePollBySystemName(systemKeyword);
             if (model == null)
                 return Content("");
 

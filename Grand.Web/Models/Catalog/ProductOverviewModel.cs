@@ -1,9 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using Grand.Web.Models.Media;
-using Grand.Core.Domain.Catalog;
-using Grand.Framework.Mvc.Models;
+﻿using Grand.Core.Domain.Catalog;
 using Grand.Core.Domain.Tax;
+using Grand.Framework.Mvc.Models;
+using Grand.Services.Discounts;
+using Grand.Web.Models.Media;
+using System;
+using System.Collections.Generic;
 
 namespace Grand.Web.Models.Catalog
 {
@@ -13,6 +14,7 @@ namespace Grand.Web.Models.Catalog
         {
             ProductPrice = new ProductPriceModel();
             DefaultPictureModel = new PictureModel();
+            SecondPictureModel = new PictureModel();
             SpecificationAttributeModels = new List<ProductSpecificationModel>();
             ReviewOverviewModel = new ProductReviewOverviewModel();
         }
@@ -34,8 +36,11 @@ namespace Grand.Web.Models.Catalog
 
         //price
         public ProductPriceModel ProductPrice { get; set; }
+        
         //picture
         public PictureModel DefaultPictureModel { get; set; }
+        public PictureModel SecondPictureModel { get; set; }
+
         //specification attributes
         public IList<ProductSpecificationModel> SpecificationAttributeModels { get; set; }
         //price
@@ -44,7 +49,13 @@ namespace Grand.Web.Models.Catalog
 		#region Nested Classes
         public partial class ProductPriceModel : BaseGrandModel
         {
+            public ProductPriceModel()
+            {
+                AppliedDiscounts = new List<AppliedDiscount>();
+            }
+
             public string OldPrice { get; set; }
+            public decimal OldPriceValue { get; set; }
             public string CatalogPrice { get; set; }
             public string Price {get;set;}
             public decimal PriceValue { get; set; }
@@ -63,6 +74,10 @@ namespace Grand.Web.Models.Catalog
             /// A value indicating whether we should display tax/shipping info (used in Germany)
             /// </summary>
             public bool DisplayTaxShippingInfo { get; set; }
+
+            public List<AppliedDiscount> AppliedDiscounts { get; set; }
+            public TierPrice PreferredTierPrice { get; set; }
+
         }
         #endregion
     }

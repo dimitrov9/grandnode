@@ -1,5 +1,5 @@
-﻿using System;
-using Grand.Framework.Mvc.Models;
+﻿using Grand.Framework.Mvc.Models;
+using System;
 using System.Collections.Generic;
 
 namespace Grand.Web.Models.Customer
@@ -8,7 +8,7 @@ namespace Grand.Web.Models.Customer
     {
         public CustomerNotesModel()
         {
-            this.CustomerNoteList = new List<CustomerNote>();
+            CustomerNoteList = new List<CustomerNote>();
         }
 
         public List<CustomerNote> CustomerNoteList { get; set; }

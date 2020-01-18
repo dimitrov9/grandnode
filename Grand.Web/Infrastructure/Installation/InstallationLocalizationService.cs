@@ -1,13 +1,12 @@
-﻿using System;
+﻿using Grand.Core;
+using Grand.Core.Extensions;
+using Microsoft.AspNetCore.Http;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Xml;
-using Grand.Core;
-using Grand.Core.Infrastructure;
-using Microsoft.AspNetCore.Http;
-using Grand.Core.Extensions;
 
 namespace Grand.Web.Infrastructure.Installation
 {
@@ -26,6 +25,17 @@ namespace Grand.Web.Infrastructure.Installation
         /// </summary>
         private IList<InstallationLanguage> _availableLanguages;
 
+        /// <summary>
+        /// Available collation
+        /// </summary>
+        private IList<InstallationCollation> _availableCollation;
+
+        private readonly IHttpContextAccessor _httpContextAccessor;
+
+        public InstallationLocalizationService(IHttpContextAccessor httpContextAccessor)
+        {
+            _httpContextAccessor = httpContextAccessor;
+        }
         /// <summary>
         /// Get locale resource value
         /// </summary>
@@ -53,9 +63,7 @@ namespace Grand.Web.Infrastructure.Installation
         /// <returns>Current language</returns>
         public virtual InstallationLanguage GetCurrentLanguage()
         {
-
-            var httpContext = EngineContext.Current.Resolve<IHttpContextAccessor>().HttpContext;
-
+            var httpContext = _httpContextAccessor.HttpContext;
             //try to get cookie
             httpContext.Request.Cookies.TryGetValue(LANGUAGE_COOKIE_NAME, out string cookieLanguageCode);
 
@@ -97,7 +105,7 @@ namespace Grand.Web.Infrastructure.Installation
         /// <param name="languageCode">Language code</param>
         public virtual void SaveCurrentLanguage(string languageCode)
         {
-            var httpContext = EngineContext.Current.Resolve<IHttpContextAccessor>().HttpContext;
+            var httpContext = _httpContextAccessor.HttpContext;
 
             var cookieOptions = new CookieOptions
             {
@@ -190,6 +198,40 @@ namespace Grand.Web.Infrastructure.Installation
 
             }
             return _availableLanguages;
+        }
+
+        /// <summary>
+        /// Get a list of available collactions
+        /// </summary>
+        /// <returns>Available collations mongodb</returns>
+        public virtual IList<InstallationCollation> GetAvailableCollations()
+        {
+            if (_availableCollation != null)
+                return _availableCollation;
+
+            _availableCollation = new List<InstallationCollation>();
+            var filePath = CommonHelper.MapPath("~/App_Data/Localization/supportedcollation.xml");
+            var xmlDocument = new XmlDocument();
+            xmlDocument.Load(File.OpenRead(filePath));
+
+            var collation = xmlDocument.SelectNodes(@"//Collations/Collation");
+
+            foreach (XmlNode resNode in collation)
+            {
+                var resNameAttribute = resNode.Attributes["Name"];
+                var resValueNode = resNode.SelectSingleNode("Value");
+
+                var resourceName = resNameAttribute.Value.Trim();
+                var resourceValue = resValueNode.InnerText.Trim();
+
+                _availableCollation.Add(new InstallationCollation()
+                {
+                    Name = resourceName,
+                    Value = resourceValue,
+                });
+            }
+
+            return _availableCollation;
         }
     }
 }

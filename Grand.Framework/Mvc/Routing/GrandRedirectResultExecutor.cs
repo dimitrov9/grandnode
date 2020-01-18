@@ -1,11 +1,11 @@
-﻿using System;
-using System.Net;
-using System.Threading.Tasks;
-using Grand.Core.Domain.Security;
+﻿using Grand.Core.Domain.Security;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.Extensions.Logging;
+using System;
+using System.Net;
+using System.Threading.Tasks;
 
 namespace Grand.Framework.Mvc.Routing
 {
@@ -26,7 +26,7 @@ namespace Grand.Framework.Mvc.Routing
             IUrlHelperFactory urlHelperFactory,
             SecuritySettings securitySettings) : base(loggerFactory, urlHelperFactory)
         {
-            this._securitySettings = securitySettings;
+            _securitySettings = securitySettings;
         }
 
         #endregion

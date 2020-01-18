@@ -1,25 +1,25 @@
-﻿using Grand.Framework.Mvc.Models;
-using Microsoft.AspNetCore.Mvc.Rendering;
+﻿using FluentValidation.Attributes;
+using Grand.Core.Domain.Catalog;
+using Grand.Framework.Localization;
+using Grand.Framework.Mapping;
 using Grand.Framework.Mvc.ModelBinding;
+using Grand.Framework.Mvc.Models;
+using Grand.Web.Areas.Admin.Validators.Orders;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using FluentValidation.Attributes;
-using Grand.Web.Areas.Admin.Models.Stores;
-using Grand.Web.Areas.Admin.Validators.Orders;
-using Grand.Framework.Localization;
-using Grand.Web.Areas.Admin.Models.Customers;
-using Grand.Core.Domain.Catalog;
 
 namespace Grand.Web.Areas.Admin.Models.Orders
 {
     [Validator(typeof(CheckoutAttributeValidator))]
-    public partial class CheckoutAttributeModel : BaseGrandEntityModel, ILocalizedModel<CheckoutAttributeLocalizedModel>
+    public partial class CheckoutAttributeModel : BaseGrandEntityModel, ILocalizedModel<CheckoutAttributeLocalizedModel>, IAclMappingModel, IStoreMappingModel
     {
         public CheckoutAttributeModel()
         {
             Locales = new List<CheckoutAttributeLocalizedModel>();
             AvailableTaxCategories = new List<SelectListItem>();
             AvailableCustomerRoles = new List<CustomerRoleModel>();
+            AvailableStores = new List<StoreModel>();
         }
 
         [GrandResourceDisplayName("Admin.Catalog.Attributes.CheckoutAttributes.Fields.Name")]

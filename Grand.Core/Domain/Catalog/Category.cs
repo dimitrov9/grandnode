@@ -1,9 +1,9 @@
-using System;
-using System.Collections.Generic;
 using Grand.Core.Domain.Localization;
 using Grand.Core.Domain.Security;
 using Grand.Core.Domain.Seo;
 using Grand.Core.Domain.Stores;
+using System;
+using System.Collections.Generic;
 
 namespace Grand.Core.Domain.Catalog
 {
@@ -86,6 +86,11 @@ namespace Grand.Core.Domain.Catalog
         public bool ShowOnHomePage { get; set; }
 
         /// <summary>
+        /// Gets or sets a value indicating whether to show featured products on home page
+        /// </summary>
+        public bool FeaturedProductsOnHomaPage { get; set; }
+
+        /// <summary>
         /// Gets or sets a value indicating whether to show the category on search box
         /// </summary>
         public bool ShowOnSearchBox { get; set; }
@@ -136,6 +141,16 @@ namespace Grand.Core.Domain.Catalog
         /// Gets or sets the flag style
         /// </summary>
         public string FlagStyle { get; set; }
+
+        /// <summary>
+        /// Gets or sets the Icon
+        /// </summary>
+        public string Icon { get; set; }
+
+        /// <summary>
+        /// Gets or sets the Default sort
+        /// </summary>
+        public int DefaultSort { get; set; } = -1;
 
         /// <summary>
         /// Gets or sets the hide on catalog page (subcategories)

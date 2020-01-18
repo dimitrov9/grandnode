@@ -1,4 +1,4 @@
-﻿using Grand.Core.Plugins;
+﻿using System.Threading.Tasks;
 
 namespace Grand.Services.Discounts
 {
@@ -12,7 +12,7 @@ namespace Grand.Services.Discounts
         /// </summary>
         /// <param name="request">Object that contains all information required to check the requirement (Current customer, discount, etc)</param>
         /// <returns>Result</returns>
-        DiscountRequirementValidationResult CheckRequirement(DiscountRequirementValidationRequest request);
+        Task<DiscountRequirementValidationResult> CheckRequirement(DiscountRequirementValidationRequest request);
 
         /// <summary>
         /// Get URL for rule configuration
