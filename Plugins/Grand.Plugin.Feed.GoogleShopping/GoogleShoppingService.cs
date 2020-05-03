@@ -183,8 +183,7 @@ namespace Grand.Plugin.Feed.GoogleShopping
 
             const string googleBaseNamespace = "http://base.google.com/ns/1.0";
 
-            var settings = new XmlWriterSettings
-            {
+            var settings = new XmlWriterSettings {
                 Encoding = Encoding.UTF8,
                 Async = true,
             };
@@ -290,13 +289,12 @@ namespace Grand.Plugin.Feed.GoogleShopping
                         //product type [product_type] - Your category of the item
                         if (product.ProductCategories.Count > 0)
                         {
-                            var defaultProductCategory = await _categoryService.GetCategoryById(product.ProductCategories.FirstOrDefault().CategoryId);
+                            var defaultProductCategory = await _categoryService.GetCategoryById(product.ProductCategories.OrderBy(x => x.DisplayOrder).FirstOrDefault().CategoryId);
 
                             if (defaultProductCategory != null)
                             {
                                 //TODO localize categories
-                                var category = await defaultProductCategory
-                                    .GetFormattedBreadCrumb(_categoryService, separator: ">", languageId: languageId);
+                                var category = await _categoryService.GetFormattedBreadCrumb(defaultProductCategory, separator: ">", languageId: languageId);
                                 if (!String.IsNullOrEmpty((category)))
                                 {
                                     writer.WriteStartElement("g", "product_type", googleBaseNamespace);
@@ -559,8 +557,7 @@ namespace Grand.Plugin.Feed.GoogleShopping
         public override async Task Install()
         {
             //settings
-            var settings = new GoogleShoppingSettings
-            {
+            var settings = new GoogleShoppingSettings {
                 PricesConsiderPromotions = false,
                 ProductPictureSize = 125,
                 PassShippingInfoWeight = false,

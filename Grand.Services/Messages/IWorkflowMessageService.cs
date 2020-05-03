@@ -7,6 +7,7 @@ using Grand.Core.Domain.Messages;
 using Grand.Core.Domain.News;
 using Grand.Core.Domain.Orders;
 using Grand.Core.Domain.Shipping;
+using Grand.Core.Domain.Stores;
 using Grand.Core.Domain.Vendors;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -56,6 +57,16 @@ namespace Grand.Services.Messages
         /// <param name="languageId">Message language identifier</param>
         /// <returns>Queued email identifier</returns>
         Task<int> SendNewCustomerNoteAddedCustomerNotification(CustomerNote customerNote, string languageId);
+
+        /// <summary>
+        /// Send an email token validation message to a customer
+        /// </summary>
+        /// <param name="customer">Customer instance</param>
+        /// <param name="store">Store instance</param>
+        /// <param name="token">Token</param>
+        /// <param name="languageId">Message language identifier</param>
+        /// <returns>Queued email identifier</returns>
+        Task<int> SendCustomerEmailTokenValidationMessage(Customer customer, Store store, string token, string languageId);
 
         #endregion
 
@@ -162,6 +173,15 @@ namespace Grand.Services.Messages
         /// <param name="languageId">Message language identifier</param>
         /// <returns>Queued email identifier</returns>
         Task<int> SendOrderCancelledStoreOwnerNotification(Order order, string languageId);
+
+        /// <summary>
+        /// Sends an order cancel notification to a vendor
+        /// </summary>
+        /// <param name="order">Order instance</param>
+        /// <param name="vendor">Vendor instance</param>
+        /// <param name="languageId">Message language identifier</param>
+        /// <returns>Queued email identifier</returns>
+        Task<int> SendOrderCancelledVendorNotification(Order order, Vendor vendor, string languageId);
 
         /// <summary>
         /// Sends an order refunded notification to a store owner
@@ -293,6 +313,14 @@ namespace Grand.Services.Messages
         /// <returns></returns>
         Task<int> SendNewReturnRequestCustomerNotification(ReturnRequest returnRequest, Order order, string languageId);
 
+        /// <summary>
+        /// Sends a new return request note added notification to a customer
+        /// </summary>
+        /// <param name="returnRequestNote">Return request note</param>
+        /// <param name="languageId">Message language identifier</param>
+        /// <returns>Queued email identifier</returns>
+        Task<int> SendNewReturnRequestNoteAddedCustomerNotification(ReturnRequestNote returnRequestNote, Order order, string languageId);
+
         #endregion
 
         #region Forum Notifications
@@ -385,7 +413,7 @@ namespace Grand.Services.Messages
         /// <param name="product">Product</param>
         /// <param name="languageId">Message language identifier</param>
         /// <returns>Queued email identifier</returns>
-        Task<int> SendQuantityBelowStoreOwnerNotification(Customer customer, Product product, string languageId);
+        Task<int> SendQuantityBelowStoreOwnerNotification(Product product, string languageId);
 
         /// <summary>
         /// Sends a "quantity below" notification to a store owner
@@ -393,7 +421,7 @@ namespace Grand.Services.Messages
         /// <param name="combination">Attribute combination</param>
         /// <param name="languageId">Message language identifier</param>
         /// <returns>Queued email identifier</returns>
-        Task<int> SendQuantityBelowStoreOwnerNotification(Customer customer, Product product, ProductAttributeCombination combination, string languageId);
+        Task<int> SendQuantityBelowStoreOwnerNotification(Product product, ProductAttributeCombination combination, string languageId);
 
         /// <summary>
         /// Sends a "new VAT sumitted" notification to a store owner

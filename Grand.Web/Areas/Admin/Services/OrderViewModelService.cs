@@ -170,7 +170,13 @@ namespace Grand.Web.Areas.Admin.Services
 
         #endregion
 
-        public virtual async Task<OrderListModel> PrepareOrderListModel(int? orderStatusId = null, int? paymentStatusId = null, int? shippingStatusId = null, DateTime? startDate = null, string storeId = null)
+        public virtual async Task<OrderListModel> PrepareOrderListModel(
+            int? orderStatusId = null, 
+            int? paymentStatusId = null, 
+            int? shippingStatusId = null, 
+            DateTime? startDate = null, 
+            string storeId = null,
+            string code = null)
         {
             //order statuses
             var model = new OrderListModel {
@@ -210,7 +216,7 @@ namespace Grand.Web.Areas.Admin.Services
             //stores
             model.AvailableStores.Add(new SelectListItem { Text = _localizationService.GetResource("Admin.Common.All"), Value = " " });
             foreach (var s in (await _storeService.GetAllStores()).Where(x => x.Id == storeId || string.IsNullOrWhiteSpace(storeId)))
-                model.AvailableStores.Add(new SelectListItem { Text = s.Name, Value = s.Id.ToString() });
+                model.AvailableStores.Add(new SelectListItem { Text = s.Shortcut, Value = s.Id.ToString() });
 
             //vendors
             model.AvailableVendors.Add(new SelectListItem { Text = _localizationService.GetResource("Admin.Common.All"), Value = " " });
@@ -238,6 +244,9 @@ namespace Grand.Web.Areas.Admin.Services
             model.IsLoggedInAsVendor = _workContext.CurrentVendor != null && !_workContext.CurrentCustomer.IsStaff();
             if (startDate.HasValue)
                 model.StartDate = startDate.Value;
+
+            if (!string.IsNullOrEmpty(code))
+                model.GoDirectlyToNumber = code;
 
             return model;
         }
@@ -273,6 +282,7 @@ namespace Grand.Web.Areas.Admin.Services
                 billingLastName: model.BillingLastName,
                 billingCountryId: model.BillingCountryId,
                 orderGuid: model.OrderGuid,
+                orderCode: model.GoDirectlyToNumber,
                 pageIndex: pageIndex - 1,
                 pageSize: pageSize);
 
@@ -324,13 +334,16 @@ namespace Grand.Web.Areas.Admin.Services
                 if (x.CustomerCurrencyCode != x.PrimaryCurrencyCode)
                 {
                     var primaryCurrency = await _currencyService.GetCurrencyByCode(x.PrimaryCurrencyCode);
+                    if (primaryCurrency == null)
+                        primaryCurrency = await _currencyService.GetPrimaryStoreCurrency();
                     orderTotal = $"{_priceFormatter.FormatPrice(x.OrderTotal, true, primaryCurrency)} ({orderTotal})";
                 }
 
                 items.Add(new OrderModel {
                     Id = x.Id,
                     OrderNumber = x.OrderNumber,
-                    StoreName = store != null ? store.Name : "Unknown",
+                    Code = x.Code,
+                    StoreName = store != null ? store.Shortcut : "Unknown",
                     OrderTotal = orderTotal,
                     CurrencyCode = x.CustomerCurrencyCode,
                     OrderStatus = x.OrderStatus.GetLocalizedEnum(_localizationService, _workContext),
@@ -357,11 +370,12 @@ namespace Grand.Web.Areas.Admin.Services
 
             model.Id = order.Id;
             model.OrderNumber = order.OrderNumber;
+            model.Code = order.Code;
             model.OrderStatus = order.OrderStatus.GetLocalizedEnum(_localizationService, _workContext);
             model.OrderStatusId = order.OrderStatusId;
             model.OrderGuid = order.OrderGuid;
             var store = await _storeService.GetStoreById(order.StoreId);
-            model.StoreName = store != null ? store.Name : "Unknown";
+            model.StoreName = store != null ? store.Shortcut : "Unknown";
             model.CustomerId = order.CustomerId;
             model.GenericAttributes = order.GenericAttributes;
 
@@ -811,7 +825,7 @@ namespace Grand.Web.Areas.Admin.Services
             model.AvailableCategories.Add(new SelectListItem { Text = _localizationService.GetResource("Admin.Common.All"), Value = " " });
             var categories = await _categoryService.GetAllCategories(showHidden: true, storeId: order.StoreId);
             foreach (var c in categories)
-                model.AvailableCategories.Add(new SelectListItem { Text = c.GetFormattedBreadCrumb(categories), Value = c.Id.ToString() });
+                model.AvailableCategories.Add(new SelectListItem { Text = _categoryService.GetFormattedBreadCrumb(c, categories), Value = c.Id.ToString() });
 
             //manufacturers
             model.AvailableManufacturers.Add(new SelectListItem { Text = _localizationService.GetResource("Admin.Common.All"), Value = " " });

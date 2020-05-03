@@ -1,5 +1,6 @@
 ﻿using Grand.Core.Extensions;
 using Microsoft.AspNetCore.Http;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -146,7 +147,7 @@ namespace Grand.Core.Caching
         /// Removes the value with the specified key from the cache
         /// </summary>
         /// <param name="key">Key of cached item</param>
-        public virtual Task RemoveAsync(string key)
+        public virtual Task RemoveAsync(string key, bool publisher = true)
         {
             var items = GetItems();
 
@@ -155,31 +156,40 @@ namespace Grand.Core.Caching
         }
 
         /// <summary>
-        /// Removes items by key pattern
+        /// Removes items by key prefix
         /// </summary>
-        /// <param name="pattern">String key pattern</param>
-        public virtual async Task RemoveByPattern(string pattern)
+        /// <param name="prefix">String prefix</param>
+        /// <param name="publisher">publisher</param>
+        public virtual Task RemoveByPrefix(string prefix, bool publisher = true)
         {
             var items = GetItems();
             if (items == null)
-                return;
+                return Task.CompletedTask;
 
-            await this.RemoveByPattern(pattern, items.Keys.Select(p => p.ToString()));
+            var keysToRemove = items.Keys.Where(x => x.ToString().StartsWith(prefix, StringComparison.OrdinalIgnoreCase)).ToList();
+            foreach (var key in keysToRemove)
+            {
+                items.Remove(key);
+            }
+            return Task.CompletedTask;
         }
 
         /// <summary>
-        /// Removes items by key pattern
+        /// Removes items by key prefix
         /// </summary>
-        /// <param name="pattern">String key pattern</param>
-        public Task RemoveByPatternAsync(string pattern)
+        /// <param name="prefix">String prefix</param>
+        /// <param name="publisher">publisher</param>
+        /// <param name="publisher">publisher</param>
+        public Task RemoveByPrefixAsync(string prefix, bool publisher = true)
         {
-            return RemoveByPattern(pattern);
+            return RemoveByPrefix(prefix);
         }
 
         /// <summary>
         /// Clear all cache data
         /// </summary>
-        public virtual Task Clear()
+        /// <param name="publisher">publisher</param>
+        public virtual Task Clear(bool publisher = true)
         {
             var items = GetItems();
 

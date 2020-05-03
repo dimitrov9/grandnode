@@ -1,4 +1,5 @@
 ﻿using Grand.Core;
+using Grand.Core.Caching;
 using Grand.Core.Configuration;
 using Grand.Core.Data;
 using Grand.Core.Domain.Media;
@@ -9,6 +10,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading.Tasks;
 
@@ -32,11 +34,11 @@ namespace Grand.Services.Media
 
         public AzurePictureService(IRepository<Picture> pictureRepository,
             ISettingService settingService,
-            IWebHelper webHelper,
             ILogger logger,
             IMediator mediator,
             IWebHostEnvironment hostingEnvironment,
             IStoreContext storeContext,
+            ICacheManager cacheManager,
             MediaSettings mediaSettings,
             GrandConfig config)
             : base(pictureRepository,
@@ -45,15 +47,16 @@ namespace Grand.Services.Media
                 mediator,
                 hostingEnvironment,
                 storeContext,
+                cacheManager,
                 mediaSettings)
         {
             _config = config;
 
-            if (String.IsNullOrEmpty(_config.AzureBlobStorageConnectionString))
+            if (string.IsNullOrEmpty(_config.AzureBlobStorageConnectionString))
                 throw new Exception("Azure connection string for BLOB is not specified");
-            if (String.IsNullOrEmpty(_config.AzureBlobStorageContainerName))
+            if (string.IsNullOrEmpty(_config.AzureBlobStorageContainerName))
                 throw new Exception("Azure container name for BLOB is not specified");
-            if (String.IsNullOrEmpty(_config.AzureBlobStorageEndPoint))
+            if (string.IsNullOrEmpty(_config.AzureBlobStorageEndPoint))
                 throw new Exception("Azure end point for BLOB is not specified");
 
             _storageAccount = CloudStorageAccount.Parse(_config.AzureBlobStorageConnectionString);

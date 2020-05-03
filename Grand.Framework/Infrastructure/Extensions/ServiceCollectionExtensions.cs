@@ -7,14 +7,12 @@ using Grand.Core.Infrastructure;
 using Grand.Core.Plugins;
 using Grand.Framework.Mvc.ModelBinding;
 using Grand.Framework.Mvc.Routing;
-using Grand.Framework.Security.Authorization;
 using Grand.Framework.Themes;
 using Grand.Services.Authentication;
 using Grand.Services.Authentication.External;
 using Grand.Services.Configuration;
 using Grand.Services.Security;
 using MediatR;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
@@ -232,8 +230,6 @@ namespace Grand.Framework.Infrastructure.Extensions
             foreach (var instance in externalAuthInstances)
                 instance.Configure(authenticationBuilder, configuration);
 
-            services.AddSingleton<IAuthorizationPolicyProvider, PermisionPolicyProvider>();
-            services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
         }
 
         /// <summary>
@@ -246,8 +242,8 @@ namespace Grand.Framework.Infrastructure.Extensions
             //add basic MVC feature
             var mvcBuilder = services.AddMvc(options =>
             {
-                // https://blogs.msdn.microsoft.com/webdev/2018/08/27/asp-net-core-2-2-0-preview1-endpoint-routing/
-                options.EnableEndpointRouting = false;
+                //add custom display metadata provider
+                options.ModelMetadataDetailsProviders.Add(new GrandMetadataProvider());
             });
 
             mvcBuilder.AddRazorRuntimeCompilation();
@@ -284,9 +280,6 @@ namespace Grand.Framework.Infrastructure.Extensions
             //MVC now serializes JSON with camel case names by default, use this code to avoid it
             mvcBuilder.AddNewtonsoftJson(options => options.SerializerSettings.ContractResolver = new DefaultContractResolver());
 
-            //add custom display metadata provider
-            mvcBuilder.AddMvcOptions(options => options.ModelMetadataDetailsProviders.Add(new GrandMetadataProvider()));
-
             //add fluent validation
             mvcBuilder.AddFluentValidation(configuration =>
             {
@@ -299,7 +292,6 @@ namespace Grand.Framework.Infrastructure.Extensions
                 //implicit/automatic validation of child properties
                 configuration.ImplicitlyValidateChildProperties = true;
             });
-            //mvcBuilder.AddFluentValidation(configuration => configuration.RegisterValidatorsFromAssemblyContaining(typeof(GrandValidatorFactory)));
 
             //register controllers as services, it'll allow to override them
             mvcBuilder.AddControllersAsServices();

@@ -1,5 +1,4 @@
-﻿using Grand.Core;
-using Grand.Core.Domain;
+﻿using Grand.Core.Domain;
 using Grand.Core.Domain.Blogs;
 using Grand.Core.Domain.Catalog;
 using Grand.Core.Domain.Customers;
@@ -43,7 +42,6 @@ namespace Grand.Services.Messages
         private readonly IDateTimeHelper _dateTimeHelper;
         private readonly IPriceFormatter _priceFormatter;
         private readonly ICurrencyService _currencyService;
-        private readonly IWorkContext _workContext;
         private readonly IProductAttributeParser _productAttributeParser;
         private readonly IAddressAttributeFormatter _addressAttributeFormatter;
         private readonly IStateProvinceService _stateProvinceService;
@@ -63,7 +61,6 @@ namespace Grand.Services.Messages
             IDateTimeHelper dateTimeHelper,
             IPriceFormatter priceFormatter,
             ICurrencyService currencyService,
-            IWorkContext workContext,
             IProductAttributeParser productAttributeParser,
             IAddressAttributeFormatter addressAttributeFormatter,
             ICountryService countryService,
@@ -80,7 +77,6 @@ namespace Grand.Services.Messages
             _dateTimeHelper = dateTimeHelper;
             _priceFormatter = priceFormatter;
             _currencyService = currencyService;
-            _workContext = workContext;
             _productAttributeParser = productAttributeParser;
             _addressAttributeFormatter = addressAttributeFormatter;
             _countryService = countryService;
@@ -192,13 +188,13 @@ namespace Grand.Services.Messages
             foreach (var item in order.OrderItems.Where(x => x.VendorId == vendor?.Id || vendor == null))
             {
                 var product = await productService.GetProductById(item.ProductId);
-                var vendorItem = await vendorService.GetVendorById(item.VendorId);
+                Vendor vendorItem = string.IsNullOrEmpty(item.VendorId) ? null : await vendorService.GetVendorById(item.VendorId);
                 var liqitem = new LiquidOrderItem(item, product, order, language, currency, store, vendorItem);
 
                 #region Download
 
-                liqitem.IsDownloadAllowed = await downloadService.IsDownloadAllowed(item);
-                liqitem.IsLicenseDownloadAllowed = await downloadService.IsLicenseDownloadAllowed(item);
+                liqitem.IsDownloadAllowed = downloadService.IsDownloadAllowed(order, item, product);
+                liqitem.IsLicenseDownloadAllowed = downloadService.IsLicenseDownloadAllowed(order, item, product);
 
                 #endregion
 
@@ -336,6 +332,7 @@ namespace Grand.Services.Messages
                 //shipping, payment method fee
                 _cusTaxTotal = string.Empty;
                 _cusDiscount = string.Empty;
+
                 if (order.CustomerTaxDisplayType == TaxDisplayType.IncludingTax)
                 {
                     //including tax
@@ -413,8 +410,11 @@ namespace Grand.Services.Messages
                 liquidOrder.DisplaySubTotalDiscount = _displaySubTotalDiscount;
                 liquidOrder.SubTotalDiscount = _cusSubTotalDiscount;
                 liquidOrder.Shipping = _cusShipTotal;
+                liquidOrder.Discount = _cusDiscount;
+                liquidOrder.PaymentMethodAdditionalFee = _cusPaymentMethodAdditionalFee;
                 liquidOrder.Tax = _cusTaxTotal;
                 liquidOrder.Total = _cusTotal;
+                liquidOrder.DisplayTax = _displayTax;
                 liquidOrder.DisplayDiscount = _displayDiscount;
                 liquidOrder.DisplayTaxRates = _displayTaxRates;
 
@@ -457,11 +457,11 @@ namespace Grand.Services.Messages
             await _mediator.EntityTokensAdded(recurringPayment, liquidRecurringPayment, liquidObject);
         }
 
-        public async Task AddReturnRequestTokens(LiquidObject liquidObject, ReturnRequest returnRequest, Order order, Language language)
+        public async Task AddReturnRequestTokens(LiquidObject liquidObject, ReturnRequest returnRequest, Store store, Order order, Language language, ReturnRequestNote returnRequestNote = null)
         {
-            var liquidReturnRequest = new LiquidReturnRequest(returnRequest, order);
+            var liquidReturnRequest = new LiquidReturnRequest(returnRequest, store, order, returnRequestNote);
 
-            liquidReturnRequest.Status = returnRequest.ReturnRequestStatus.GetLocalizedEnum(_localizationService, _workContext);
+            liquidReturnRequest.Status = returnRequest.ReturnRequestStatus.GetLocalizedEnum(_localizationService, language.Id);
             liquidReturnRequest.Products = await ProductListToHtmlTable();
             liquidReturnRequest.PickupAddressStateProvince =
                             !string.IsNullOrEmpty(returnRequest.PickupAddress.StateProvinceId) ?
@@ -582,11 +582,7 @@ namespace Grand.Services.Messages
                         string pictureUrl = "";
                         if (product.ProductPictures.Any())
                         {
-                            var picture = await pictureService.GetPictureById(product.ProductPictures.OrderBy(x => x.DisplayOrder).FirstOrDefault().PictureId);
-                            if (picture != null)
-                            {
-                                pictureUrl = await pictureService.GetPictureUrl(picture, _templatesSettings.PictureSize, storeLocation: store.SslEnabled ? store.SecureUrl : store.Url);
-                            }
+                            pictureUrl = await pictureService.GetPictureUrl(product.ProductPictures.OrderBy(x => x.DisplayOrder).FirstOrDefault().PictureId, _templatesSettings.PictureSize, storeLocation: store.SslEnabled ? store.SecureUrl : store.Url);
                         }
                         sb.Append(string.Format("<td><img src=\"{0}\" alt=\"\"/></td>", pictureUrl));
                     }
@@ -687,11 +683,11 @@ namespace Grand.Services.Messages
             await _mediator.EntityTokensAdded(product, liquidProduct, liquidObject);
         }
 
-        public async Task AddAttributeCombinationTokens(LiquidObject liquidObject, Customer customer, Product product, ProductAttributeCombination combination)
+        public async Task AddAttributeCombinationTokens(LiquidObject liquidObject, Product product, ProductAttributeCombination combination)
         {
-            var liquidAttributeCombination = new LiquidAttributeCombination(customer, product, combination);
+            var liquidAttributeCombination = new LiquidAttributeCombination(combination);
             var productAttributeFormatter = _serviceProvider.GetRequiredService<IProductAttributeFormatter>();
-            liquidAttributeCombination.Formatted = await productAttributeFormatter.FormatAttributes(product, combination.AttributesXml, customer, renderPrices: false);
+            liquidAttributeCombination.Formatted = await productAttributeFormatter.FormatAttributes(product, combination.AttributesXml, null, renderPrices: false);
             liquidAttributeCombination.SKU = product.FormatSku(combination.AttributesXml, _productAttributeParser);
             liquidObject.AttributeCombination = liquidAttributeCombination;
 

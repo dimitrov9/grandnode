@@ -1,3 +1,4 @@
+using Grand.Core.Domain.Catalog;
 using Grand.Core.Domain.Media;
 using Grand.Core.Domain.Orders;
 using System;
@@ -45,16 +46,20 @@ namespace Grand.Services.Media
         /// <summary>
         /// Gets a value indicating whether download is allowed
         /// </summary>
+        /// <param name="order">Order</param>
         /// <param name="orderItem">Order item to check</param>
+        /// <param name="product">Product</param>
         /// <returns>True if download is allowed; otherwise, false.</returns>
-        Task<bool> IsDownloadAllowed(OrderItem orderItem);
+        bool IsDownloadAllowed(Order order, OrderItem orderItem, Product product);
 
         /// <summary>
         /// Gets a value indicating whether license download is allowed
         /// </summary>
+        /// <param name="order">Order</param>
         /// <param name="orderItem">Order item to check</param>
+        /// <param name="product">Product</param>
         /// <returns>True if license download is allowed; otherwise, false.</returns>
-        Task<bool> IsLicenseDownloadAllowed(OrderItem orderItem);
+        bool IsLicenseDownloadAllowed(Order order, OrderItem orderItem, Product product);
 
     }
 }

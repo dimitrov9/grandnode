@@ -27,14 +27,19 @@ namespace Grand.Core.Configuration
         public bool PluginShadowCopy { get; set; }
 
         /// <summary>
-        /// Indicates whether we should use Redis server for caching (instead of default in-memory caching)
+        /// Enable the Publish/Subscribe messaging with redis to manage memory cache on every server
         /// </summary>
-        public bool RedisCachingEnabled { get; set; }
+        public bool RedisPubSubEnabled { get; set; }
 
         /// <summary>
-        /// Redis connection string. Used when Redis caching is enabled
+        /// Redis connection string. Used when Redis Publish/Subscribe is enabled
         /// </summary>
-        public string RedisCachingConnectionString { get; set; }
+        public string RedisPubSubConnectionString { get; set; }
+
+        /// <summary>
+        /// Messages sent by other clients to these channels will be pushed by Redis to all the subscribed clients. It must me the same value on every server
+        /// </summary>
+        public string RedisPubSubChannel { get; set; }
 
         /// <summary>
         /// Indicates whether we should use Redis server for persist keys - required in farm scenario
@@ -82,6 +87,11 @@ namespace Grand.Core.Configuration
         public string AmazonBucketName { get; set; }
 
         /// <summary>
+        /// Amazon Domain name for cloudfront distribution
+        /// </summary>
+        public string AmazonDistributionDomainName { get; set; }
+
+        /// <summary>
         /// Amazon Region 
         /// http://docs.amazonwebservices.com/AmazonS3/latest/BucketConfiguration.html#LocationSelection
         /// </summary>
@@ -96,6 +106,16 @@ namespace Grand.Core.Configuration
         /// Enable scripting C# applications to execute code.
         /// </summary>
         public bool UseRoslynScripts { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating for default cache time in minutes
+        /// </summary>
+        public int DefaultCacheTimeMinutes { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating for cookie expires in hours - default 24 * 365 = 8760
+        /// </summary>
+        public int CookieAuthExpires { get; set; }
 
         /// <summary>
         /// Enable minimal Progressive Web App.

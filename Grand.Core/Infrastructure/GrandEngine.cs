@@ -112,7 +112,9 @@ namespace Grand.Core.Infrastructure
             var config = new GrandConfig();
             configuration.GetSection("Grand").Bind(config);
 
-            CommonHelper.HostingEnvironment = hostingEnvironment;
+            CommonHelper.BaseDirectory = hostingEnvironment.ContentRootPath;
+            CommonHelper.CacheTimeMinutes = config.DefaultCacheTimeMinutes;
+            CommonHelper.CookieAuthExpires = config.CookieAuthExpires > 0 ? config.CookieAuthExpires : 24 * 365;
 
             //register mongo mappings
             MongoDBMapperConfiguration.RegisterMongoDBMappings();

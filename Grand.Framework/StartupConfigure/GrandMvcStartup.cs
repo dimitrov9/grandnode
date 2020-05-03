@@ -17,7 +17,7 @@ namespace Grand.Framework.StartupConfigure
         /// <param name="services">Collection of service descriptors</param>
         /// <param name="configuration">Configuration root of the application</param>
         public void ConfigureServices(IServiceCollection services, IConfiguration configuration)
-        {            
+        {
             //add healthChecks
             services.AddGrandHealthChecks();
 
@@ -41,6 +41,7 @@ namespace Grand.Framework.StartupConfigure
 
             //add custom redirect result executor
             services.AddGrandRedirectResultExecutor();
+
         }
 
         /// <summary>
@@ -49,14 +50,11 @@ namespace Grand.Framework.StartupConfigure
         /// <param name="application">Builder for configuring an application's request pipeline</param>
         public void Configure(IApplicationBuilder application)
         {
-            //add HealthChecks
-            application.UseGrandHealthChecks();
-
             //add MiniProfiler
             application.UseProfiler();
 
-            //MVC routing
-            application.UseGrandMvc();
+            //MVC endpoint routing
+            application.UseGrandEndpoints();
 
             //save log application started
             application.LogApplicationStarted();
@@ -65,8 +63,7 @@ namespace Grand.Framework.StartupConfigure
         /// <summary>
         /// Gets order of this startup configuration implementation
         /// </summary>
-        public int Order
-        {
+        public int Order {
             //MVC should be loaded last
             get { return 1000; }
         }

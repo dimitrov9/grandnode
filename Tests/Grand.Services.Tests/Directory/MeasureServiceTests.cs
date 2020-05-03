@@ -156,8 +156,8 @@ namespace Grand.Services.Directory.Tests
                 _eventPublisher = tempEventPublisher.Object;
             }
             _serviceProvider = new Mock<IServiceProvider>().Object;
-            _measureService = new MeasureService(new TestMemoryCacheManager(new Mock<IMemoryCache>().Object), _measureDimensionRepository,
-                _measureWeightRepository, _measureUnitRepository, _measureSettings, _eventPublisher, _serviceProvider);
+            _measureService = new MeasureService(new TestMemoryCacheManager(new Mock<IMemoryCache>().Object, _eventPublisher), _measureDimensionRepository,
+                _measureWeightRepository, _measureUnitRepository, _measureSettings, _eventPublisher);
         }
 
         [TestMethod()]

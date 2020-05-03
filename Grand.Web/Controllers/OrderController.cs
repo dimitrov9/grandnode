@@ -3,19 +3,22 @@ using Grand.Core.Domain.Customers;
 using Grand.Core.Domain.Orders;
 using Grand.Core.Domain.Shipping;
 using Grand.Framework.Controllers;
-using Grand.Framework.Security;
+using Grand.Services.Commands.Models.Orders;
 using Grand.Services.Common;
 using Grand.Services.Localization;
 using Grand.Services.Orders;
 using Grand.Services.Payments;
 using Grand.Services.Shipping;
-using Grand.Web.Interfaces;
-using Grand.Web.Models.Order;
+using Grand.Web.Commands.Models.Orders;
+using Grand.Web.Features.Models.Orders;
+using Grand.Web.Models.Orders;
+using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Grand.Web.Controllers
@@ -24,32 +27,35 @@ namespace Grand.Web.Controllers
     {
         #region Fields
 
-        private readonly IOrderViewModelService _orderViewModelService;
         private readonly IOrderService _orderService;
         private readonly IWorkContext _workContext;
+        private readonly IStoreContext _storeContext;
         private readonly IOrderProcessingService _orderProcessingService;
         private readonly IPaymentService _paymentService;
         private readonly ILocalizationService _localizationService;
+        private readonly IMediator _mediator;
         private readonly OrderSettings _orderSettings;
 
         #endregion
 
         #region Constructors
 
-        public OrderController(IOrderViewModelService orderViewModelService,
-            IOrderService orderService,
+        public OrderController(IOrderService orderService,
             IWorkContext workContext,
+            IStoreContext storeContext,
             IOrderProcessingService orderProcessingService,
             IPaymentService paymentService,
             ILocalizationService localizationService,
+            IMediator mediator,
             OrderSettings orderSettings)
         {
-            _orderViewModelService = orderViewModelService;
             _orderService = orderService;
             _workContext = workContext;
+            _storeContext = storeContext;
             _orderProcessingService = orderProcessingService;
             _paymentService = paymentService;
             _localizationService = localizationService;
+            _mediator = mediator;
             _orderSettings = orderSettings;
         }
 
@@ -63,7 +69,11 @@ namespace Grand.Web.Controllers
             if (!_workContext.CurrentCustomer.IsRegistered())
                 return Challenge();
 
-            var model = await _orderViewModelService.PrepareCustomerOrderList();
+            var model = await _mediator.Send(new GetCustomerOrderList() {
+                Customer = _workContext.CurrentCustomer,
+                Language = _workContext.WorkingLanguage,
+                Store = _storeContext.CurrentStore
+            });
             return View(model);
         }
 
@@ -92,7 +102,11 @@ namespace Grand.Web.Controllers
             {
                 var errors = await _orderProcessingService.CancelRecurringPayment(recurringPayment);
 
-                var model = await _orderViewModelService.PrepareCustomerOrderList();
+                var model = await _mediator.Send(new GetCustomerOrderList() {
+                    Customer = _workContext.CurrentCustomer,
+                    Language = _workContext.WorkingLanguage,
+                    Store = _storeContext.CurrentStore
+                });
                 model.CancelRecurringPaymentErrors = errors;
 
                 return View(model);
@@ -112,8 +126,11 @@ namespace Grand.Web.Controllers
             if (!rewardPointsSettings.Enabled)
                 return RedirectToRoute("CustomerInfo");
 
-            var customer = _workContext.CurrentCustomer;
-            var model = await _orderViewModelService.PrepareCustomerRewardPoints(customer);
+            var model = await _mediator.Send(new GetCustomerRewardPoints() {
+                Customer = _workContext.CurrentCustomer,
+                Store = _storeContext.CurrentStore,
+                Currency = _workContext.WorkingCurrency
+            });
             return View(model);
         }
 
@@ -124,7 +141,7 @@ namespace Grand.Web.Controllers
             if (order == null || order.Deleted || _workContext.CurrentCustomer.Id != order.CustomerId)
                 return Challenge();
 
-            var model = await _orderViewModelService.PrepareOrderDetails(order);
+            var model = await _mediator.Send(new GetOrderDetails() { Order = order, Language = _workContext.WorkingLanguage });
 
             return View(model);
         }
@@ -136,7 +153,7 @@ namespace Grand.Web.Controllers
             if (order == null || order.Deleted || _workContext.CurrentCustomer.Id != order.CustomerId)
                 return Challenge();
 
-            var model = await _orderViewModelService.PrepareOrderDetails(order);
+            var model = await _mediator.Send(new GetOrderDetails() { Order = order, Language = _workContext.WorkingLanguage });
             model.PrintMode = true;
 
             return View("Details", model);
@@ -154,7 +171,7 @@ namespace Grand.Web.Controllers
 
                 return Challenge();
 
-            await _orderProcessingService.CancelOrder(order, true, true);
+            await _mediator.Send(new CancelOrderCommand() { Order = order, NotifyCustomer = true, NotifyStoreOwner = true });
 
             return RedirectToRoute("OrderDetails", new { orderId = orderId });
         }
@@ -209,10 +226,10 @@ namespace Grand.Web.Controllers
             if (order == null || order.Deleted || _workContext.CurrentCustomer.Id != order.CustomerId)
                 return Challenge();
 
-            await _orderViewModelService.InsertOrderNote(model);
+            await _mediator.Send(new InsertOrderNoteCommand() { OrderNote = model, Language = _workContext.WorkingLanguage });
 
             AddNotification(Framework.UI.NotifyType.Success, _localizationService.GetResource("OrderNote.Added"), true);
-            return RedirectToRoute("OrderDetails", model.OrderId);
+            return RedirectToRoute("OrderDetails", new { orderId = model.OrderId });
         }
 
         //My account / Order details page / re-order
@@ -222,7 +239,10 @@ namespace Grand.Web.Controllers
             if (order == null || order.Deleted || _workContext.CurrentCustomer.Id != order.CustomerId)
                 return Challenge();
 
-            await _orderProcessingService.ReOrder(order);
+            var warnings = await _mediator.Send(new ReOrderCommand() { Order = order });
+            if(warnings.Any())
+                AddNotification(Framework.UI.NotifyType.Error, string.Join(",", warnings), true);
+
             return RedirectToRoute("ShoppingCart");
         }
 
@@ -239,8 +259,7 @@ namespace Grand.Web.Controllers
             if (!await _paymentService.CanRePostProcessPayment(order))
                 return RedirectToRoute("OrderDetails", new { orderId = orderId });
 
-            var postProcessPaymentRequest = new PostProcessPaymentRequest
-            {
+            var postProcessPaymentRequest = new PostProcessPaymentRequest {
                 Order = order
             };
             await _paymentService.PostProcessPayment(postProcessPaymentRequest);
@@ -267,7 +286,12 @@ namespace Grand.Web.Controllers
             if (order == null || order.Deleted || _workContext.CurrentCustomer.Id != order.CustomerId)
                 return Challenge();
 
-            var model = await _orderViewModelService.PrepareShipmentDetails(shipment);
+            var model = await _mediator.Send(new GetShipmentDetails() {
+                Customer = _workContext.CurrentCustomer,
+                Language = _workContext.WorkingLanguage,
+                Order = order,
+                Shipment = shipment
+            });
 
             return View(model);
         }
